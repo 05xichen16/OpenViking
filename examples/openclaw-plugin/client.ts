@@ -171,6 +171,33 @@ export type SessionArchiveResult = {
   messages: OVMessage[];
 };
 
+/** One entry from `GET /api/v1/sessions` (raw session directory listing). */
+export type SessionListEntry = {
+  session_id: string;
+  uri: string;
+  is_dir: boolean;
+  mod_time?: string;
+};
+
+/**
+ * Session metadata from `GET /api/v1/sessions/{id}` (SessionMeta.to_dict()).
+ * All fields optional so callers that only read a subset stay compatible.
+ */
+export type SessionMetaResult = {
+  session_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  created_by_user_id?: string;
+  participant_user_ids?: string[];
+  participant_agent_ids?: string[];
+  message_count?: number;
+  total_message_count?: number;
+  commit_count?: number;
+  last_commit_at?: string;
+  pending_tokens?: number;
+  llm_token_usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+};
+
 export type AddResourceInput = {
   pathOrUrl: string;
   to?: string;
@@ -797,25 +824,24 @@ export class OpenVikingClient {
   }
 
   /** GET session — server auto-creates if absent; returns session meta including message stats and token usage. */
-  async getSession(sessionId: string, actorPeerId?: string): Promise<{
-    message_count?: number;
-    commit_count?: number;
-    last_commit_at?: string;
-    pending_tokens?: number;
-    llm_token_usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-  }> {
-    return this.request<{
-      message_count?: number;
-      commit_count?: number;
-      last_commit_at?: string;
-      pending_tokens?: number;
-      llm_token_usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-    }>(
+  async getSession(sessionId: string, actorPeerId?: string): Promise<SessionMetaResult> {
+    return this.request<SessionMetaResult>(
       `/api/v1/sessions/${encodeURIComponent(sessionId)}`,
       { method: "GET" },
       undefined,
       actorPeerId,
     );
+  }
+
+  /** List all sessions visible to the caller (user-scoped by the server; raw, unsorted). */
+  async listSessions(actorPeerId?: string): Promise<SessionListEntry[]> {
+    const result = await this.request<SessionListEntry[]>(
+      "/api/v1/sessions",
+      { method: "GET" },
+      undefined,
+      actorPeerId,
+    );
+    return Array.isArray(result) ? result : [];
   }
 
   /**

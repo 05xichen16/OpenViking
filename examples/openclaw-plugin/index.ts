@@ -6,8 +6,10 @@ import { createOpenVikingCommandDefinitions } from "./plugin/openviking-command-
 import {
   parseAddResourceCommandArgs,
   parseAddSkillCommandArgs,
+  parseConversationsCommandArgs,
   parseOVSearchCommandArgs,
 } from "./plugin/openviking-command-args.js";
+import { createOpenVikingConversationsRuntime } from "./plugin/openviking-conversations-runtime.js";
 import { createOpenVikingContextEngineRef } from "./plugin/openviking-context-engine-ref.js";
 import { registerOpenVikingContextEngine } from "./plugin/openviking-context-engine-registration.js";
 import { registerOpenVikingFeatureGatesMethod } from "./plugin/openviking-feature-gates.js";
@@ -259,6 +261,12 @@ const contextEnginePlugin = {
       listOpenVikingDirectory,
     } = queryRuntime;
 
+    const { runConversations } = createOpenVikingConversationsRuntime({
+      getClient,
+      formatMessage: formatMessageFaithful,
+      logger: api.logger,
+    });
+
     registerOpenVikingImportTools({
       registerTool: registerOpenVikingTool,
       getClient,
@@ -316,9 +324,11 @@ const contextEnginePlugin = {
       parseAddResourceCommandArgs,
       parseAddSkillCommandArgs,
       parseOVSearchCommandArgs,
+      parseConversationsCommandArgs,
       addResourceOpenViking,
       addSkillOpenViking,
       searchOpenViking,
+      runConversations,
       handleQueryConfigCommand,
       queryRecallTraces,
       formatRecallTraceText,

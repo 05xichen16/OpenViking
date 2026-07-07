@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createOpenVikingCommandDefinitions,
 } from "../../plugin/openviking-command-definitions.js";
+import { parseConversationsCommandArgs } from "../../plugin/openviking-command-args.js";
+import { createOpenVikingConversationsRuntime } from "../../plugin/openviking-conversations-runtime.js";
 import { registerOpenVikingContextEngine } from "../../plugin/openviking-context-engine-registration.js";
 import { createOpenVikingQueryConfigCommandHandler } from "../../plugin/openviking-query-config-command.js";
 import { createOpenVikingQueryRuntime } from "../../plugin/openviking-query-runtime.js";
@@ -81,6 +83,10 @@ describe("plugin module seams", () => {
     const handleQueryConfigCommand = vi.fn().mockResolvedValue({ text: "query config", details: { action: "query_config" } });
     const queryRecallTraces = vi.fn().mockResolvedValue({ entries: [{ traceId: "trace-1" }], lookupLayer: "memory", warnings: [] });
     const formatRecallTraceText = vi.fn().mockReturnValue("trace text");
+    const runConversations = vi.fn().mockResolvedValue({
+      content: [{ type: "text" as const, text: "conversation list" }],
+      details: { action: "list_conversations" },
+    });
     const deps = {
       resolvePluginSessionRouting: () => ({ agentId: "agent-main", sessionId: "session-1", ovSessionId: "ov-session-1" }),
       isBypassedSession: () => false,
@@ -88,9 +94,11 @@ describe("plugin module seams", () => {
       parseAddResourceCommandArgs: vi.fn().mockReturnValue({ source: "https://example.com/doc", wait: true }),
       parseAddSkillCommandArgs: vi.fn().mockReturnValue({ source: "skill.md" }),
       parseOVSearchCommandArgs: vi.fn().mockReturnValue({ query: "docs", uri: "viking://resources", limit: 3 }),
+      parseConversationsCommandArgs: vi.fn().mockReturnValue({ action: "list" as const, limit: 5 }),
       addResourceOpenViking,
       addSkillOpenViking,
       searchOpenViking,
+      runConversations,
       handleQueryConfigCommand,
       queryRecallTraces,
       formatRecallTraceText,
@@ -104,6 +112,7 @@ describe("plugin module seams", () => {
       "ov-search",
       "ov-query-config",
       "ov-recall-trace",
+      "conversations",
     ]);
 
     await expect(commands[0]!.handler({ args: "https://example.com/doc", sessionId: "session-1" })).resolves.toEqual({
@@ -135,6 +144,87 @@ describe("plugin module seams", () => {
       ovSessionId: "ov-session-1",
     });
     expect(formatRecallTraceText).toHaveBeenCalledWith({ entries: [{ traceId: "trace-1" }], lookupLayer: "memory", warnings: [] });
+
+    await expect(commands[5]!.handler({ args: "list --limit 5" })).resolves.toEqual({
+      text: "conversation list",
+      details: { action: "list_conversations" },
+    });
+    expect(deps.parseConversationsCommandArgs).toHaveBeenCalledWith("list --limit 5");
+    expect(runConversations).toHaveBeenCalledWith({ action: "list", limit: 5 }, "agent-main");
+  });
+
+  it("parses /conversations command arguments across list and restore forms", () => {
+    expect(parseConversationsCommandArgs("")).toEqual({ action: "list", limit: undefined });
+    expect(parseConversationsCommandArgs("list --limit 5")).toEqual({ action: "list", limit: 5 });
+    expect(parseConversationsCommandArgs("restore sess-1 --tokens 4000")).toEqual({
+      action: "restore",
+      sessionId: "sess-1",
+      tokenBudget: 4000,
+    });
+    // A bare, non-verb positional is treated as a restore target.
+    expect(parseConversationsCommandArgs("sess-abc")).toEqual({
+      action: "restore",
+      sessionId: "sess-abc",
+      tokenBudget: undefined,
+    });
+    expect(() => parseConversationsCommandArgs("restore")).toThrow(/Usage: \/conversations/);
+  });
+
+  it("lists conversations enriched and newest-first through the conversations runtime", async () => {
+    const listSessions = vi.fn().mockResolvedValue([
+      { session_id: "s-old", uri: "viking://user/sessions/s-old", is_dir: true, mod_time: "2026-01-01T09:00:00" },
+      { session_id: "s-new", uri: "viking://user/sessions/s-new", is_dir: true, mod_time: "2026-02-02T09:00:00" },
+    ]);
+    const getSession = vi.fn(async (sessionId: string) => ({
+      session_id: sessionId,
+      message_count: sessionId === "s-new" ? 7 : 4,
+      participant_agent_ids: ["worker"],
+    }));
+    const getSessionContext = vi.fn();
+    const runtime = createOpenVikingConversationsRuntime({
+      getClient: async () => ({ listSessions, getSession, getSessionContext }),
+      formatMessage: (msg) => `[${msg.role}] ${msg.parts?.[0]?.text ?? ""}`,
+    });
+
+    const result = await runtime.runConversations({ action: "list" }, "worker");
+
+    expect(listSessions).toHaveBeenCalledWith("worker");
+    const text = result.content[0]!.text;
+    // Newest first: s-new before s-old.
+    expect(text.indexOf("s-new")).toBeLessThan(text.indexOf("s-old"));
+    expect(text).toContain("worker");
+    expect(result.details?.shown).toBe(2);
+    expect(getSessionContext).not.toHaveBeenCalled();
+  });
+
+  it("restores a conversation's assembled context through the conversations runtime", async () => {
+    const getSessionContext = vi.fn().mockResolvedValue({
+      latest_archive_overview: "We discussed the migration plan.",
+      pre_archive_abstracts: [{ archive_id: "archive_000", abstract: "Kickoff notes." }],
+      messages: [
+        { id: "m1", role: "user", parts: [{ type: "text", text: "hello again" }], created_at: "2026-02-02T09:00:00" },
+      ],
+      estimatedTokens: 42,
+      stats: { totalArchives: 1, includedArchives: 1, droppedArchives: 0, failedArchives: 0, activeTokens: 10, archiveTokens: 32 },
+    });
+    const runtime = createOpenVikingConversationsRuntime({
+      getClient: async () => ({
+        listSessions: vi.fn(),
+        getSession: vi.fn(),
+        getSessionContext,
+      }),
+      formatMessage: (msg) => `[${msg.role}] ${msg.parts?.[0]?.text ?? ""}`,
+    });
+
+    const result = await runtime.runConversations({ action: "restore", sessionId: "s-1", tokenBudget: 8000 }, "worker");
+
+    expect(getSessionContext).toHaveBeenCalledWith("s-1", 8000, "worker");
+    const text = result.content[0]!.text;
+    expect(text).toContain("Restored conversation: s-1");
+    expect(text).toContain("We discussed the migration plan.");
+    expect(text).toContain("Kickoff notes.");
+    expect(text).toContain("hello again");
+    expect(result.details?.action).toBe("restore_conversation");
   });
 
   it("keeps recall trace route paths stable across legacy and HTTP adapters", () => {

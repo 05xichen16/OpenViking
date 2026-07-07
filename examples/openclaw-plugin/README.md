@@ -280,6 +280,19 @@ The plugin also registers explicit slash commands for manual imports:
 /ov-search "memory install skill" --uri viking://user/skills
 ```
 
+It also registers `/conversations` for browsing and resuming past sessions. With no
+arguments it lists the current user's recent conversations (sessions are user-scoped
+server-side and enriched with update time, message count, and participating agents);
+`restore` re-assembles a conversation's full context (summary, archive abstracts, and
+recent messages) via `GET /api/v1/sessions/{id}/context` and injects it into the current turn:
+
+```text
+/conversations                       # recent conversations for the current user, newest first
+/conversations list --limit 10       # widen the list
+/conversations restore <session_id>  # rebuild that conversation's full context (also: /conversations <session_id>)
+/conversations restore <session_id> --tokens 64000  # cap the restored context token budget
+```
+
 Resource import supports remote URLs, Git URLs, local files, local directories, and uploaded zip files. OpenViking's built-in parsers cover common documents and media such as Markdown, text, PDF, HTML, Word, PowerPoint, Excel, EPUB, images, audio, and video. Directory imports also accept common code, documentation, and config file extensions such as `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, `.cpp`, `.json`, `.yaml`, `.toml`, `.csv`, `.rst`, `.proto`, `.tf`, and `.vue`.
 
 For HTTP safety, the plugin never sends a direct local filesystem path to the OpenViking server. Local files and directories are first uploaded through `/api/v1/resources/temp_upload`; directories are zipped locally with a pure JavaScript zip implementation before upload.

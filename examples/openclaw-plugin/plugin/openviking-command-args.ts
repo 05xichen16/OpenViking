@@ -21,6 +21,10 @@ export type OVSearchCommandArgs = {
   limit?: number;
 };
 
+export type ConversationsCommandArgs =
+  | { action: "list"; limit?: number }
+  | { action: "restore"; sessionId: string; tokenBudget?: number };
+
 export function tokenizeCommandArgs(args: string): string[] {
   const tokens: string[] = [];
   let current = "";
@@ -183,5 +187,36 @@ export function parseOVSearchCommandArgs(args: string): OVSearchCommandArgs {
     query,
     uri: getStringFlag(parsed.flags, "uri"),
     limit: getNumberFlag(parsed.flags, "limit"),
+  };
+}
+
+export const CONVERSATIONS_USAGE =
+  "Usage: /conversations [list] [--limit N]  |  /conversations restore <session_id> [--tokens N]";
+
+export function parseConversationsCommandArgs(args: string): ConversationsCommandArgs {
+  const parsed = parseFlagArgs(args);
+  const [first, second] = parsed.positionals;
+  const sub = (first ?? "").toLowerCase();
+  const restoreVerbs = new Set(["restore", "resume", "open", "show"]);
+  const listVerbs = new Set(["", "list", "ls"]);
+
+  if (restoreVerbs.has(sub)) {
+    const sessionId = (second ?? "").trim();
+    if (!sessionId) {
+      throw new Error(CONVERSATIONS_USAGE);
+    }
+    return { action: "restore", sessionId, tokenBudget: getNumberFlag(parsed.flags, "tokens") };
+  }
+
+  if (listVerbs.has(sub)) {
+    return { action: "list", limit: getNumberFlag(parsed.flags, "limit") };
+  }
+
+  // A bare, non-verb positional is treated as a session id to restore, so
+  // `/conversations <session_id>` works as a shortcut for the restore verb.
+  return {
+    action: "restore",
+    sessionId: first!.trim(),
+    tokenBudget: getNumberFlag(parsed.flags, "tokens"),
   };
 }

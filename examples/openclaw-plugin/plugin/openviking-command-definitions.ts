@@ -36,6 +36,10 @@ export type OVSearchCommandInput = {
   limit?: number;
 };
 
+export type ConversationsCommandInput =
+  | { action: "list"; limit?: number }
+  | { action: "restore"; sessionId: string; tokenBudget?: number };
+
 export type RecallTraceCommandInput = {
   turn?: "latest" | "all";
   traceId?: string;
@@ -69,6 +73,11 @@ export type OpenVikingCommandDefinitionsDeps = {
     input: OVSearchCommandInput,
     agentId?: string,
     traceCtx?: OpenVikingCommandSession,
+  ) => Promise<OpenVikingCommandToolResult>;
+  parseConversationsCommandArgs: (args: string) => ConversationsCommandInput;
+  runConversations: (
+    input: ConversationsCommandInput,
+    agentId?: string,
   ) => Promise<OpenVikingCommandToolResult>;
   handleQueryConfigCommand: (ctx: PluginCommandContext) => Promise<CommandResult>;
   queryRecallTraces: (
@@ -287,6 +296,23 @@ export function createOpenVikingCommandDefinitions(
           };
         } catch (err) {
           return { text: `OpenViking recall trace query failed: ${err instanceof Error ? err.message : String(err)}` };
+        }
+      },
+    },
+    {
+      name: "conversations",
+      description: "List past OpenViking conversations, or restore one's full context by id.",
+      acceptsArgs: true,
+      handler: async (ctx: PluginCommandContext) => {
+        try {
+          if (deps.isBypassedSession(ctx)) {
+            return toCommandResult(deps.makeBypassedToolResult("conversations"));
+          }
+          const session = deps.resolvePluginSessionRouting(ctx);
+          const input = deps.parseConversationsCommandArgs(ctx.args ?? "");
+          return toCommandResult(await deps.runConversations(input, session.agentId));
+        } catch (err) {
+          return { text: `OpenViking conversations failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       },
     },
