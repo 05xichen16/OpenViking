@@ -462,6 +462,7 @@ export async function assembleOpenVikingSession({
     inputTokenEstimate: originalTokens,
     tokenBudget,
     sessionKey: sessionKey ?? null,
+    rebound: ovSessionIdOverride ? true : false,
     senderIdFound: sender.found,
     senderId: sender.senderId ?? null,
     messages: messageDigest(messages),
@@ -583,7 +584,10 @@ export async function assembleOpenVikingSession({
         extra: { archiveCount: 0, activeCount: 0 },
       });
     }
-    if (!hasArchives && ctx.messages.length < messages.length) {
+    // When a rebind (/conversations restore) is active, the restored session must
+    // win even if it currently has fewer messages than the live transcript —
+    // otherwise the resume silently falls back to the live session.
+    if (!ovSessionIdOverride && !hasArchives && ctx.messages.length < messages.length) {
       return assemblePassthrough({
         diag,
         ovSessionId,

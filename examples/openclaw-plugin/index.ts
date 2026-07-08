@@ -11,6 +11,10 @@ import {
 } from "./plugin/openviking-command-args.js";
 import { createOpenVikingConversationsRuntime } from "./plugin/openviking-conversations-runtime.js";
 import { createSessionRebindStore } from "./session-rebind-store.js";
+import {
+  hydrateSessionToLocalStore,
+  resolveOpenclawStateDir,
+} from "./plugin/openviking-session-hydration.js";
 import { createOpenVikingContextEngineRef } from "./plugin/openviking-context-engine-ref.js";
 import { registerOpenVikingContextEngine } from "./plugin/openviking-context-engine-registration.js";
 import { registerOpenVikingFeatureGatesMethod } from "./plugin/openviking-feature-gates.js";
@@ -266,7 +270,13 @@ const contextEnginePlugin = {
 
     const { runConversations } = createOpenVikingConversationsRuntime({
       getClient,
-      sessionRebindStore,
+      hydrateSession: (args) =>
+        hydrateSessionToLocalStore({
+          ...args,
+          stateDir: resolveOpenclawStateDir(),
+          cwd: process.cwd(),
+          nowMs: Date.now(),
+        }),
       logger: api.logger,
     });
 

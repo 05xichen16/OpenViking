@@ -1,5 +1,5 @@
-import type { SessionListEntry, SessionMetaResult } from "../client.js";
-import type { SessionRebindStore } from "../session-rebind-store.js";
+import type { SessionContextResult, SessionListEntry, SessionMetaResult } from "../client.js";
+import { parseOpenclawAgentId, type HydrateResult } from "./openviking-session-hydration.js";
 
 export type ConversationsListInput = { action: "list"; limit?: number };
 export type ConversationsRestoreInput = { action: "restore"; sessionId: string; tokenBudget?: number };
@@ -8,6 +8,7 @@ export type ConversationsCommandInput = ConversationsListInput | ConversationsRe
 /** Current-session routing passed from the command handler. */
 export type ConversationsSession = {
   agentId?: string;
+  sessionKey?: string;
   ovSessionId?: string;
 };
 
@@ -19,17 +20,31 @@ export type OpenVikingConversationsToolResult = {
 type OpenVikingConversationsClient = {
   listSessions: (actorPeerId?: string) => Promise<SessionListEntry[]>;
   getSession: (sessionId: string, actorPeerId?: string) => Promise<SessionMetaResult>;
+  getSessionContext: (
+    sessionId: string,
+    tokenBudget?: number,
+    actorPeerId?: string,
+  ) => Promise<SessionContextResult>;
 };
+
+/** Writes the restored session into OpenClaw's local store (see openviking-session-hydration). */
+export type HydrateSessionFn = (args: {
+  ovSessionId: string;
+  ovContext: SessionContextResult;
+  openclawAgentId: string;
+  label?: string;
+}) => Promise<HydrateResult>;
 
 export type OpenVikingConversationsRuntimeDeps = {
   getClient: () => Promise<OpenVikingConversationsClient>;
-  sessionRebindStore: SessionRebindStore;
+  hydrateSession: HydrateSessionFn;
   logger?: { warn?: (message: string) => void };
 };
 
 export const CONVERSATION_LIST_DEFAULT_LIMIT = 20;
 /** Cap on per-session metadata lookups so listing stays bounded on large stores. */
 export const CONVERSATION_ENRICH_CAP = 200;
+export const CONVERSATION_RESTORE_DEFAULT_TOKENS = 128_000;
 
 export type ConversationRow = { session_id: string; modTime: string; meta: SessionMetaResult | null };
 
@@ -143,37 +158,41 @@ export function createOpenVikingConversationsRuntime(
     if (!targetSessionId) {
       throw new Error("session id is required to restore a conversation");
     }
-    const currentOvSessionId = (session.ovSessionId ?? "").trim();
-    if (!currentOvSessionId) {
-      throw new Error(
-        "Cannot determine the current session; run /conversations restore inside an active conversation.",
-      );
-    }
 
-    // Validate the target exists so we never bind to a missing session.
     const client = await deps.getClient();
-    let meta: SessionMetaResult | null = null;
+    let ovContext: SessionContextResult;
     try {
-      meta = await client.getSession(targetSessionId, session.agentId);
+      ovContext = await client.getSessionContext(
+        targetSessionId,
+        input.tokenBudget ?? CONVERSATION_RESTORE_DEFAULT_TOKENS,
+        session.agentId,
+      );
     } catch (err) {
       throw new Error(`Conversation ${targetSessionId} not found or unreadable: ${String(err)}`);
     }
 
-    // Bind the live session to the restored one: the context engine injects the
-    // restored context on the next turn and routes new turns' writes into it.
-    deps.sessionRebindStore.setRebind(currentOvSessionId, targetSessionId);
+    const openclawAgentId = parseOpenclawAgentId(session.sessionKey);
+    const result = await deps.hydrateSession({
+      ovSessionId: targetSessionId,
+      ovContext,
+      openclawAgentId,
+      label: `OpenViking ${targetSessionId.slice(0, 8)}`,
+    });
 
-    const msgs = meta?.total_message_count ?? meta?.message_count;
-    const msgsNote = typeof msgs === "number" ? ` (${msgs} message(s))` : "";
-    const text =
-      `Resumed conversation ${targetSessionId}${msgsNote}. ` +
-      "Your next message will carry its context, and this conversation now continues into it — just keep chatting.";
+    const text = [
+      `Restored conversation ${targetSessionId} into your local OpenClaw sessions (${result.messageCount} message(s)).`,
+      "Switch to it and keep chatting:",
+      `  /session ${result.sessionKey}`,
+      `  (or from a shell:  openclaw tui --session ${result.sessionKey} )`,
+    ].join("\n");
     return {
       content: [{ type: "text" as const, text }],
       details: {
-        action: "resume_conversation",
+        action: "hydrate_conversation",
         targetSessionId,
-        currentOvSessionId,
+        sessionKey: result.sessionKey,
+        sessionFile: result.sessionFile,
+        messageCount: result.messageCount,
       },
     };
   };

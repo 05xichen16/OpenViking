@@ -5,7 +5,6 @@ import {
 } from "../../plugin/openviking-command-definitions.js";
 import { parseConversationsCommandArgs } from "../../plugin/openviking-command-args.js";
 import { createOpenVikingConversationsRuntime } from "../../plugin/openviking-conversations-runtime.js";
-import { createSessionRebindStore } from "../../session-rebind-store.js";
 import { registerOpenVikingContextEngine } from "../../plugin/openviking-context-engine-registration.js";
 import { createOpenVikingQueryConfigCommandHandler } from "../../plugin/openviking-query-config-command.js";
 import { createOpenVikingQueryRuntime } from "../../plugin/openviking-query-runtime.js";
@@ -186,8 +185,8 @@ describe("plugin module seams", () => {
       participant_agent_ids: ["worker"],
     }));
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({ listSessions, getSession }),
-      sessionRebindStore: createSessionRebindStore(),
+      getClient: async () => ({ listSessions, getSession, getSessionContext: vi.fn() }),
+      hydrateSession: vi.fn(),
     });
 
     const result = await runtime.runConversations({ action: "list" }, { agentId: "worker" });
@@ -200,35 +199,52 @@ describe("plugin module seams", () => {
     expect(result.details?.shown).toBe(2);
   });
 
-  it("rebinds the live session to a restored conversation via the conversations runtime", async () => {
-    const getSession = vi.fn().mockResolvedValue({ session_id: "s-1", message_count: 12 });
-    const sessionRebindStore = createSessionRebindStore();
+  it("restore hydrates the session locally and returns the native /session command", async () => {
+    const ovContext = {
+      latest_archive_overview: "Earlier we discussed the migration.",
+      pre_archive_abstracts: [],
+      messages: [],
+      estimatedTokens: 10,
+      stats: { totalArchives: 1, includedArchives: 1, droppedArchives: 0, failedArchives: 0, activeTokens: 0, archiveTokens: 10 },
+    };
+    const getSessionContext = vi.fn().mockResolvedValue(ovContext);
+    const hydrateSession = vi.fn().mockResolvedValue({
+      sessionKey: "agent:main:s-1",
+      sessionFile: "/home/u/.openclaw/agents/main/sessions/s-1.jsonl",
+      storePath: "/home/u/.openclaw/agents/main/sessions/sessions.json",
+      messageCount: 3,
+    });
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({ listSessions: vi.fn(), getSession }),
-      sessionRebindStore,
+      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn(), getSessionContext }),
+      hydrateSession,
     });
 
     const result = await runtime.runConversations(
-      { action: "restore", sessionId: "s-1" },
-      { agentId: "worker", ovSessionId: "cur-ov" },
+      { action: "restore", sessionId: "s-1", tokenBudget: 8000 },
+      { agentId: "worker", sessionKey: "agent:main:current-uuid" },
     );
 
-    // Target validated, then the current session is rebound to it.
-    expect(getSession).toHaveBeenCalledWith("s-1", "worker");
-    expect(sessionRebindStore.getTarget("cur-ov")).toBe("s-1");
-    expect(result.content[0]!.text).toContain("Resumed conversation s-1");
-    expect(result.details?.action).toBe("resume_conversation");
+    expect(getSessionContext).toHaveBeenCalledWith("s-1", 8000, "worker");
+    // OpenClaw agent id is parsed from the current session key ("main").
+    expect(hydrateSession).toHaveBeenCalledWith(
+      expect.objectContaining({ ovSessionId: "s-1", ovContext, openclawAgentId: "main" }),
+    );
+    const text = result.content[0]!.text;
+    expect(text).toContain("/session agent:main:s-1");
+    expect(text).toContain("openclaw tui --session agent:main:s-1");
+    expect(result.details?.action).toBe("hydrate_conversation");
   });
 
-  it("refuses to restore without a current session id", async () => {
+  it("restore surfaces a not-found target conversation", async () => {
+    const getSessionContext = vi.fn().mockRejectedValue(new Error("NOT_FOUND"));
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn() }),
-      sessionRebindStore: createSessionRebindStore(),
+      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn(), getSessionContext }),
+      hydrateSession: vi.fn(),
     });
 
     await expect(
-      runtime.runConversations({ action: "restore", sessionId: "s-1" }, { agentId: "worker" }),
-    ).rejects.toThrow(/current session/i);
+      runtime.runConversations({ action: "restore", sessionId: "missing" }, { agentId: "worker", sessionKey: "agent:main:x" }),
+    ).rejects.toThrow(/not found or unreadable/i);
   });
 
   it("keeps recall trace route paths stable across legacy and HTTP adapters", () => {

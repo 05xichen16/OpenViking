@@ -280,23 +280,36 @@ The plugin also registers explicit slash commands for manual imports:
 /ov-search "memory install skill" --uri viking://user/skills
 ```
 
-It also registers `/conversations` for browsing and truly resuming past sessions. With no
-arguments it lists the current user's recent conversations (sessions are user-scoped
+It also registers `/conversations` for browsing and resuming past sessions across machines.
+With no arguments it lists the current user's recent conversations (sessions are user-scoped
 server-side and enriched with update time, message count, and participating agents).
-`restore` (alias `resume`) *rebinds* the live session to the chosen past session: from the
-next turn on, the context engine assembles the model's context from the restored session
-(`GET /api/v1/sessions/{id}/context`) and new turns are written back into it — so you can
-simply keep chatting as a continuation of that conversation.
+
+`restore` (alias `resume`) *hydrates* the chosen OpenViking session into OpenClaw's **local**
+session store, then hands you OpenClaw's native switch command. Because OpenClaw's own
+`--session` / `/session` resume reads a local `sessions.json` + transcript `.jsonl`, and
+OpenViking's `sessionId` equals OpenClaw's session UUID, the plugin fetches the session's
+assembled context (`GET /api/v1/sessions/{id}/context`), converts it to OpenClaw's transcript
+format, and writes `~/.openclaw/agents/{agentId}/sessions/{uuid}.jsonl` plus a `sessions.json`
+entry (the store is backed up to `sessions.json.openviking.bak` first). This is what makes
+**cross-machine** resume work: run it on machine B to reconstruct a conversation that
+happened on machine A.
 
 ```text
 /conversations                       # recent conversations for the current user, newest first
 /conversations list --limit 10       # widen the list
-/conversations restore <session_id>  # resume that conversation — keep chatting (also: /conversations <session_id>)
+/conversations restore <session_id>  # hydrate it locally, then switch with the printed /session command
 ```
 
-The rebind lives in the running gateway process (per session); restarting the gateway or
-switching sessions drops it. Because new turns are appended to the restored session, this
-intentionally continues one conversation across two OpenClaw sessions.
+After `restore`, switch into it natively:
+
+```text
+/session agent:main:<session_id>              # in the TUI
+openclaw tui --session agent:main:<session_id>  # from a shell
+```
+
+Fidelity note: recent turns are reconstructed verbatim; older archived turns are folded into a
+leading summary message; assistant provider/usage accounting is defaulted (OpenViking does not
+retain the original values).
 
 Resource import supports remote URLs, Git URLs, local files, local directories, and uploaded zip files. OpenViking's built-in parsers cover common documents and media such as Markdown, text, PDF, HTML, Word, PowerPoint, Excel, EPUB, images, audio, and video. Directory imports also accept common code, documentation, and config file extensions such as `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, `.cpp`, `.json`, `.yaml`, `.toml`, `.csv`, `.rst`, `.proto`, `.tf`, and `.vue`.
 
