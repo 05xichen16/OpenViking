@@ -1,3 +1,5 @@
+import type { SessionRebindStore } from "../session-rebind-store.js";
+
 export type OpenVikingContextEngineRegistrationApi = {
   registerContextEngine?: (id: string, factory: () => unknown) => void;
 };
@@ -34,6 +36,7 @@ export type OpenVikingContextEngineCreateParams<
   }) => void;
   queryConfigStore: TQueryConfigStore;
   traceRecorder: TTraceRecorder;
+  sessionRebindStore?: SessionRebindStore;
 };
 
 export type OpenVikingContextEngineRegistrationDeps<
@@ -54,6 +57,7 @@ export type OpenVikingContextEngineRegistrationDeps<
   rememberSessionAgentId: OpenVikingContextEngineCreateParams["rememberSessionAgentId"];
   queryConfigStore: TQueryConfigStore;
   traceRecorder: TTraceRecorder;
+  sessionRebindStore?: SessionRebindStore;
   createContextEngine: (params: OpenVikingContextEngineCreateParams<TCfg, TClient, TQueryConfigStore, TTraceRecorder, TLogger>) => TEngine;
   setContextEngineRef: (engine: TEngine) => void;
 };
@@ -87,6 +91,7 @@ export function registerOpenVikingContextEngine<
       rememberSessionAgentId: deps.rememberSessionAgentId,
       queryConfigStore: deps.queryConfigStore,
       traceRecorder: deps.traceRecorder,
+      sessionRebindStore: deps.sessionRebindStore,
     });
     deps.setContextEngineRef(contextEngine);
     return contextEngine;

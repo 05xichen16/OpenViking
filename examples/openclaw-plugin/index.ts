@@ -10,6 +10,7 @@ import {
   parseOVSearchCommandArgs,
 } from "./plugin/openviking-command-args.js";
 import { createOpenVikingConversationsRuntime } from "./plugin/openviking-conversations-runtime.js";
+import { createSessionRebindStore } from "./session-rebind-store.js";
 import { createOpenVikingContextEngineRef } from "./plugin/openviking-context-engine-ref.js";
 import { registerOpenVikingContextEngine } from "./plugin/openviking-context-engine-registration.js";
 import { registerOpenVikingFeatureGatesMethod } from "./plugin/openviking-feature-gates.js";
@@ -261,9 +262,11 @@ const contextEnginePlugin = {
       listOpenVikingDirectory,
     } = queryRuntime;
 
+    const sessionRebindStore = createSessionRebindStore();
+
     const { runConversations } = createOpenVikingConversationsRuntime({
       getClient,
-      formatMessage: formatMessageFaithful,
+      sessionRebindStore,
       logger: api.logger,
     });
 
@@ -398,6 +401,7 @@ const contextEnginePlugin = {
       rememberSessionAgentId,
       queryConfigStore,
       traceRecorder,
+      sessionRebindStore,
       createContextEngine: createMemoryOpenVikingContextEngine,
       setContextEngineRef,
     });

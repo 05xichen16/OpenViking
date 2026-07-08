@@ -5,6 +5,7 @@ import { memoryOpenVikingConfigSchema } from "../../config.js";
 import { createMemoryOpenVikingContextEngine } from "../../context-engine.js";
 import { RuntimeQueryConfigStore } from "../../query-config.js";
 import { RecallTraceMemoryStore } from "../../recall-trace.js";
+import { createSessionRebindStore, type SessionRebindStore } from "../../session-rebind-store.js";
 
 const cfg = memoryOpenVikingConfigSchema.parse({
   mode: "remote",
@@ -46,6 +47,7 @@ function makeEngine(
     cfgOverrides?: Record<string, unknown>;
     traceRecorder?: RecallTraceMemoryStore;
     queryConfigStore?: RuntimeQueryConfigStore;
+    sessionRebindStore?: SessionRebindStore;
   },
 ) {
   const logger = makeLogger();
@@ -74,6 +76,7 @@ function makeEngine(
     resolveAgentId,
     traceRecorder: opts?.traceRecorder,
     queryConfigStore: opts?.queryConfigStore,
+    sessionRebindStore: opts?.sessionRebindStore,
   });
 
   return {
@@ -501,6 +504,33 @@ describe("context-engine assemble()", () => {
       content: [{ type: "text", text: "export const value = 1;" }],
       isError: false,
     });
+  });
+
+  it("reads the rebound (restored) session when a rebind is set", async () => {
+    const sessionRebindStore = createSessionRebindStore();
+    // The live session "session-1" was resumed into a past session via /conversations restore.
+    sessionRebindStore.setRebind("session-1", "resumed-session");
+
+    const { engine, client } = makeEngine(
+      {
+        latest_archive_overview: "# Session Summary\nPreviously discussed repository setup.",
+        pre_archive_abstracts: [],
+        messages: [],
+        estimatedTokens: 100,
+        stats: { ...makeStats(), totalArchives: 1, includedArchives: 1, archiveTokens: 40 },
+      },
+      { sessionRebindStore },
+    );
+
+    await engine.assemble({
+      prompt: "current user prompt",
+      sessionId: "session-1",
+      messages: [{ role: "user", content: "keep going" }],
+      tokenBudget: 4096,
+    });
+
+    // Model context is rebuilt from the restored session, not the live one.
+    expect(client.getSessionContext).toHaveBeenCalledWith("resumed-session", 4096, "agent:session-1");
   });
 
   it("passes through live messages when the session matches bypassSessionPatterns", async () => {

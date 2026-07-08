@@ -12,6 +12,7 @@ import {
 import type { RecallTraceEntry } from "./recall-trace.js";
 import { estimateAgentMessageTokens, estimateAgentMessagesTokens } from "./token-estimator.js";
 import { openClawSessionToOvStorageId } from "./routing/identity-routing.js";
+import type { SessionRebindStore } from "./session-rebind-store.js";
 import type { AgentMessage } from "./services/context-message-adapter.js";
 import {
   assembleOpenVikingSession,
@@ -248,6 +249,8 @@ export function createMemoryOpenVikingContextEngine(params: {
   }) => void;
   queryConfigStore?: RuntimeQueryConfigStore;
   traceRecorder?: { record(entry: RecallTraceEntry): void; recordAndFlush?: (entry: RecallTraceEntry) => Promise<unknown> };
+  /** Resume/rebind links set by `/conversations restore`; keyed by natural ovSessionId. */
+  sessionRebindStore?: SessionRebindStore;
 }): ContextEngineWithCommit {
   const {
     id,
@@ -260,6 +263,7 @@ export function createMemoryOpenVikingContextEngine(params: {
     rememberSessionAgentId,
     queryConfigStore,
     traceRecorder,
+    sessionRebindStore,
   } = params;
 
   const diagEnabled = cfg.emitStandardDiagnostics;
@@ -319,6 +323,23 @@ export function createMemoryOpenVikingContextEngine(params: {
     };
   }
 
+  /**
+   * If the current session was rebound to a restored session via
+   * `/conversations restore`, return that target ovSessionId so assemble reads it
+   * and afterTurn writes into it. Undefined means "no rebind" (normal flow).
+   */
+  function resolveRebindOverride(params: {
+    sessionId: string;
+    sessionKey?: string;
+    runtimeContext?: Record<string, unknown>;
+  }): string | undefined {
+    if (!sessionRebindStore) {
+      return undefined;
+    }
+    const { ovSessionId } = resolveSessionIdentity(params);
+    return sessionRebindStore.getTarget(ovSessionId);
+  }
+
   return {
     info: {
       id,
@@ -348,6 +369,7 @@ export function createMemoryOpenVikingContextEngine(params: {
       return assembleOpenVikingSession({
         sessionId: assembleParams.sessionId,
         sessionKey: resolveSessionKey(assembleParams),
+        ovSessionIdOverride: resolveRebindOverride(assembleParams),
         messages: assembleParams.messages,
         tokenBudget,
         runtimeContext: assembleParams.runtimeContext,
@@ -374,6 +396,7 @@ export function createMemoryOpenVikingContextEngine(params: {
       await afterTurnOpenVikingSession({
         sessionId: afterTurnParams.sessionId,
         sessionKey: resolveSessionKey(afterTurnParams),
+        ovSessionIdOverride: resolveRebindOverride(afterTurnParams),
         messages: afterTurnParams.messages,
         prePromptMessageCount: afterTurnParams.prePromptMessageCount,
         isHeartbeat: afterTurnParams.isHeartbeat,

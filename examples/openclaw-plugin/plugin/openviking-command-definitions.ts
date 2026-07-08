@@ -77,7 +77,7 @@ export type OpenVikingCommandDefinitionsDeps = {
   parseConversationsCommandArgs: (args: string) => ConversationsCommandInput;
   runConversations: (
     input: ConversationsCommandInput,
-    agentId?: string,
+    session: OpenVikingCommandSession,
   ) => Promise<OpenVikingCommandToolResult>;
   handleQueryConfigCommand: (ctx: PluginCommandContext) => Promise<CommandResult>;
   queryRecallTraces: (
@@ -310,7 +310,7 @@ export function createOpenVikingCommandDefinitions(
           }
           const session = deps.resolvePluginSessionRouting(ctx);
           const input = deps.parseConversationsCommandArgs(ctx.args ?? "");
-          return toCommandResult(await deps.runConversations(input, session.agentId));
+          return toCommandResult(await deps.runConversations(input, session));
         } catch (err) {
           return { text: `OpenViking conversations failed: ${err instanceof Error ? err.message : String(err)}` };
         }

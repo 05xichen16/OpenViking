@@ -1,13 +1,15 @@
-import type {
-  OVMessage,
-  SessionContextResult,
-  SessionListEntry,
-  SessionMetaResult,
-} from "../client.js";
+import type { SessionListEntry, SessionMetaResult } from "../client.js";
+import type { SessionRebindStore } from "../session-rebind-store.js";
 
 export type ConversationsListInput = { action: "list"; limit?: number };
 export type ConversationsRestoreInput = { action: "restore"; sessionId: string; tokenBudget?: number };
 export type ConversationsCommandInput = ConversationsListInput | ConversationsRestoreInput;
+
+/** Current-session routing passed from the command handler. */
+export type ConversationsSession = {
+  agentId?: string;
+  ovSessionId?: string;
+};
 
 export type OpenVikingConversationsToolResult = {
   content: Array<{ type: "text"; text: string }>;
@@ -17,23 +19,17 @@ export type OpenVikingConversationsToolResult = {
 type OpenVikingConversationsClient = {
   listSessions: (actorPeerId?: string) => Promise<SessionListEntry[]>;
   getSession: (sessionId: string, actorPeerId?: string) => Promise<SessionMetaResult>;
-  getSessionContext: (
-    sessionId: string,
-    tokenBudget?: number,
-    actorPeerId?: string,
-  ) => Promise<SessionContextResult>;
 };
 
 export type OpenVikingConversationsRuntimeDeps = {
   getClient: () => Promise<OpenVikingConversationsClient>;
-  formatMessage: (msg: OVMessage) => string;
+  sessionRebindStore: SessionRebindStore;
   logger?: { warn?: (message: string) => void };
 };
 
 export const CONVERSATION_LIST_DEFAULT_LIMIT = 20;
 /** Cap on per-session metadata lookups so listing stays bounded on large stores. */
 export const CONVERSATION_ENRICH_CAP = 200;
-export const CONVERSATION_RESTORE_DEFAULT_TOKENS = 128_000;
 
 export type ConversationRow = { session_id: string; modTime: string; meta: SessionMetaResult | null };
 
@@ -77,7 +73,7 @@ export function formatConversationsList(
   const footer: string[] = [
     "",
     `Showing ${rows.length} of ${opts.total} conversation(s) for the current user.`,
-    "Restore one with: /conversations restore <session_id>",
+    "Resume one with: /conversations restore <session_id>",
   ];
   if (opts.enrichTruncated > 0) {
     footer.push(
@@ -87,62 +83,21 @@ export function formatConversationsList(
   return [header, ...lines, ...footer].join("\n");
 }
 
-export function formatRestoredConversation(
-  sessionId: string,
-  ctx: SessionContextResult,
-  formatMessage: (msg: OVMessage) => string,
-): string {
-  const overview = (ctx.latest_archive_overview ?? "").trim();
-  const abstracts = Array.isArray(ctx.pre_archive_abstracts) ? ctx.pre_archive_abstracts : [];
-  const messages = Array.isArray(ctx.messages) ? ctx.messages : [];
-
-  if (!overview && abstracts.length === 0 && messages.length === 0) {
-    return `Conversation ${sessionId} has no restorable content (it may be empty or was deleted).`;
-  }
-
-  const stats = ctx.stats;
-  const out: string[] = [
-    `=== Restored conversation: ${sessionId} ===`,
-    "The text below is prior conversation context recovered from OpenViking. Treat it as earlier history of this conversation and continue from it.",
-    `(~${ctx.estimatedTokens ?? 0} tokens; ${stats?.includedArchives ?? 0}/${stats?.totalArchives ?? 0} archives; ${messages.length} recent message(s))`,
-  ];
-
-  if (overview) {
-    out.push("", "## Summary of earlier turns", overview);
-  }
-  if (abstracts.length > 0) {
-    out.push("", "## Earlier archive abstracts");
-    for (const abstract of abstracts) {
-      const text = (abstract.abstract ?? "").trim();
-      if (text) {
-        out.push(`- [${abstract.archive_id}] ${text}`);
-      }
-    }
-  }
-  if (messages.length > 0) {
-    out.push("", "## Recent messages");
-    for (const msg of messages) {
-      out.push(formatMessage(msg), "");
-    }
-  }
-  return out.join("\n").trimEnd();
-}
-
 export function createOpenVikingConversationsRuntime(
   deps: OpenVikingConversationsRuntimeDeps,
 ): {
   runConversations: (
     input: ConversationsCommandInput,
-    agentId?: string,
+    session: ConversationsSession,
   ) => Promise<OpenVikingConversationsToolResult>;
 } {
   const listConversations = async (
     input: ConversationsListInput,
-    agentId?: string,
+    session: ConversationsSession,
   ): Promise<OpenVikingConversationsToolResult> => {
     const client = await deps.getClient();
     const limit = Math.max(1, Math.floor(input.limit ?? CONVERSATION_LIST_DEFAULT_LIMIT));
-    const entries = (await client.listSessions(agentId)).filter(
+    const entries = (await client.listSessions(session.agentId)).filter(
       (entry) => entry && entry.session_id && entry.is_dir !== false,
     );
 
@@ -153,7 +108,7 @@ export function createOpenVikingConversationsRuntime(
       capped.map(async (entry): Promise<ConversationRow> => {
         const modTime = typeof entry.mod_time === "string" ? entry.mod_time : "";
         try {
-          const meta = await client.getSession(entry.session_id, agentId);
+          const meta = await client.getSession(entry.session_id, session.agentId);
           return { session_id: entry.session_id, modTime, meta };
         } catch (err) {
           deps.logger?.warn?.(
@@ -182,39 +137,54 @@ export function createOpenVikingConversationsRuntime(
 
   const restoreConversation = async (
     input: ConversationsRestoreInput,
-    agentId?: string,
+    session: ConversationsSession,
   ): Promise<OpenVikingConversationsToolResult> => {
-    const sessionId = input.sessionId.trim();
-    if (!sessionId) {
+    const targetSessionId = input.sessionId.trim();
+    if (!targetSessionId) {
       throw new Error("session id is required to restore a conversation");
     }
-    const tokenBudget = Math.max(
-      1,
-      Math.floor(input.tokenBudget ?? CONVERSATION_RESTORE_DEFAULT_TOKENS),
-    );
+    const currentOvSessionId = (session.ovSessionId ?? "").trim();
+    if (!currentOvSessionId) {
+      throw new Error(
+        "Cannot determine the current session; run /conversations restore inside an active conversation.",
+      );
+    }
+
+    // Validate the target exists so we never bind to a missing session.
     const client = await deps.getClient();
-    const ctx = await client.getSessionContext(sessionId, tokenBudget, agentId);
-    const text = formatRestoredConversation(sessionId, ctx, deps.formatMessage);
+    let meta: SessionMetaResult | null = null;
+    try {
+      meta = await client.getSession(targetSessionId, session.agentId);
+    } catch (err) {
+      throw new Error(`Conversation ${targetSessionId} not found or unreadable: ${String(err)}`);
+    }
+
+    // Bind the live session to the restored one: the context engine injects the
+    // restored context on the next turn and routes new turns' writes into it.
+    deps.sessionRebindStore.setRebind(currentOvSessionId, targetSessionId);
+
+    const msgs = meta?.total_message_count ?? meta?.message_count;
+    const msgsNote = typeof msgs === "number" ? ` (${msgs} message(s))` : "";
+    const text =
+      `Resumed conversation ${targetSessionId}${msgsNote}. ` +
+      "Your next message will carry its context, and this conversation now continues into it — just keep chatting.";
     return {
       content: [{ type: "text" as const, text }],
       details: {
-        action: "restore_conversation",
-        sessionId,
-        tokenBudget,
-        estimatedTokens: ctx.estimatedTokens ?? 0,
-        messageCount: Array.isArray(ctx.messages) ? ctx.messages.length : 0,
-        stats: ctx.stats,
+        action: "resume_conversation",
+        targetSessionId,
+        currentOvSessionId,
       },
     };
   };
 
   const runConversations = async (
     input: ConversationsCommandInput,
-    agentId?: string,
+    session: ConversationsSession,
   ): Promise<OpenVikingConversationsToolResult> => {
     return input.action === "restore"
-      ? restoreConversation(input, agentId)
-      : listConversations(input, agentId);
+      ? restoreConversation(input, session)
+      : listConversations(input, session);
   };
 
   return { runConversations };

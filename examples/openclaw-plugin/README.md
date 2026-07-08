@@ -280,18 +280,23 @@ The plugin also registers explicit slash commands for manual imports:
 /ov-search "memory install skill" --uri viking://user/skills
 ```
 
-It also registers `/conversations` for browsing and resuming past sessions. With no
+It also registers `/conversations` for browsing and truly resuming past sessions. With no
 arguments it lists the current user's recent conversations (sessions are user-scoped
-server-side and enriched with update time, message count, and participating agents);
-`restore` re-assembles a conversation's full context (summary, archive abstracts, and
-recent messages) via `GET /api/v1/sessions/{id}/context` and injects it into the current turn:
+server-side and enriched with update time, message count, and participating agents).
+`restore` (alias `resume`) *rebinds* the live session to the chosen past session: from the
+next turn on, the context engine assembles the model's context from the restored session
+(`GET /api/v1/sessions/{id}/context`) and new turns are written back into it — so you can
+simply keep chatting as a continuation of that conversation.
 
 ```text
 /conversations                       # recent conversations for the current user, newest first
 /conversations list --limit 10       # widen the list
-/conversations restore <session_id>  # rebuild that conversation's full context (also: /conversations <session_id>)
-/conversations restore <session_id> --tokens 64000  # cap the restored context token budget
+/conversations restore <session_id>  # resume that conversation — keep chatting (also: /conversations <session_id>)
 ```
+
+The rebind lives in the running gateway process (per session); restarting the gateway or
+switching sessions drops it. Because new turns are appended to the restored session, this
+intentionally continues one conversation across two OpenClaw sessions.
 
 Resource import supports remote URLs, Git URLs, local files, local directories, and uploaded zip files. OpenViking's built-in parsers cover common documents and media such as Markdown, text, PDF, HTML, Word, PowerPoint, Excel, EPUB, images, audio, and video. Directory imports also accept common code, documentation, and config file extensions such as `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, `.cpp`, `.json`, `.yaml`, `.toml`, `.csv`, `.rst`, `.proto`, `.tf`, and `.vue`.
 

@@ -66,6 +66,11 @@ type AssembleBuiltContext = {
 export type AssembleOpenVikingSessionParams = {
   sessionId: string;
   sessionKey?: string;
+  /**
+   * When set, use this ovSessionId instead of deriving it from sessionId/sessionKey.
+   * Used by `/conversations restore` to read a rebound (resumed) session's context.
+   */
+  ovSessionIdOverride?: string;
   messages: AgentMessage[];
   tokenBudget: number;
   runtimeContext?: Record<string, unknown>;
@@ -120,6 +125,12 @@ type AfterTurnClient = Pick<OpenVikingClient, "addSessionMessage" | "getSession"
 export type AfterTurnOpenVikingSessionParams = {
   sessionId: string;
   sessionKey?: string;
+  /**
+   * When set, persist this turn's messages into this ovSessionId instead of the
+   * one derived from sessionId/sessionKey. Used by `/conversations restore` so a
+   * resumed conversation continues writing into the restored session.
+   */
+  ovSessionIdOverride?: string;
   messages?: AgentMessage[];
   prePromptMessageCount?: number;
   isHeartbeat?: boolean;
@@ -414,6 +425,7 @@ function isSessionNotFoundError(err: unknown): boolean {
 export async function assembleOpenVikingSession({
   sessionId,
   sessionKey,
+  ovSessionIdOverride,
   messages,
   tokenBudget,
   runtimeContext,
@@ -433,7 +445,7 @@ export async function assembleOpenVikingSession({
   hasAutoRecallBlock,
   prependRecallToLatestUserMessage,
 }: AssembleOpenVikingSessionParams): Promise<AssembleOpenVikingSessionResult> {
-  const ovSessionId = openClawSessionToOvStorageId(sessionId, sessionKey);
+  const ovSessionId = ovSessionIdOverride ?? openClawSessionToOvStorageId(sessionId, sessionKey);
   const sender = extractRuntimeSenderId(runtimeContext);
   const latestMessage = messages.at(-1);
   const isTransformContextAssemble = !isMainAssemble;
@@ -778,6 +790,7 @@ function messageDigest(messages: AgentMessage[], maxCharsPerMsg = 2000): Array<{
 export async function afterTurnOpenVikingSession({
   sessionId,
   sessionKey,
+  ovSessionIdOverride,
   messages: rawMessages,
   prePromptMessageCount,
   isHeartbeat,
@@ -801,7 +814,7 @@ export async function afterTurnOpenVikingSession({
 
   try {
     const sender = extractRuntimeSenderId(runtimeContext);
-    const ovSessionId = openClawSessionToOvStorageId(sessionId, sessionKey);
+    const ovSessionId = ovSessionIdOverride ?? openClawSessionToOvStorageId(sessionId, sessionKey);
     const runtimeAgentId = extractRuntimeAgentId(runtimeContext);
     if (runtimeAgentId) {
       rememberSessionAgentId?.({

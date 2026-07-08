@@ -5,6 +5,7 @@ import {
 } from "../../plugin/openviking-command-definitions.js";
 import { parseConversationsCommandArgs } from "../../plugin/openviking-command-args.js";
 import { createOpenVikingConversationsRuntime } from "../../plugin/openviking-conversations-runtime.js";
+import { createSessionRebindStore } from "../../session-rebind-store.js";
 import { registerOpenVikingContextEngine } from "../../plugin/openviking-context-engine-registration.js";
 import { createOpenVikingQueryConfigCommandHandler } from "../../plugin/openviking-query-config-command.js";
 import { createOpenVikingQueryRuntime } from "../../plugin/openviking-query-runtime.js";
@@ -150,7 +151,11 @@ describe("plugin module seams", () => {
       details: { action: "list_conversations" },
     });
     expect(deps.parseConversationsCommandArgs).toHaveBeenCalledWith("list --limit 5");
-    expect(runConversations).toHaveBeenCalledWith({ action: "list", limit: 5 }, "agent-main");
+    expect(runConversations).toHaveBeenCalledWith({ action: "list", limit: 5 }, {
+      agentId: "agent-main",
+      sessionId: "session-1",
+      ovSessionId: "ov-session-1",
+    });
   });
 
   it("parses /conversations command arguments across list and restore forms", () => {
@@ -180,13 +185,12 @@ describe("plugin module seams", () => {
       message_count: sessionId === "s-new" ? 7 : 4,
       participant_agent_ids: ["worker"],
     }));
-    const getSessionContext = vi.fn();
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({ listSessions, getSession, getSessionContext }),
-      formatMessage: (msg) => `[${msg.role}] ${msg.parts?.[0]?.text ?? ""}`,
+      getClient: async () => ({ listSessions, getSession }),
+      sessionRebindStore: createSessionRebindStore(),
     });
 
-    const result = await runtime.runConversations({ action: "list" }, "worker");
+    const result = await runtime.runConversations({ action: "list" }, { agentId: "worker" });
 
     expect(listSessions).toHaveBeenCalledWith("worker");
     const text = result.content[0]!.text;
@@ -194,37 +198,37 @@ describe("plugin module seams", () => {
     expect(text.indexOf("s-new")).toBeLessThan(text.indexOf("s-old"));
     expect(text).toContain("worker");
     expect(result.details?.shown).toBe(2);
-    expect(getSessionContext).not.toHaveBeenCalled();
   });
 
-  it("restores a conversation's assembled context through the conversations runtime", async () => {
-    const getSessionContext = vi.fn().mockResolvedValue({
-      latest_archive_overview: "We discussed the migration plan.",
-      pre_archive_abstracts: [{ archive_id: "archive_000", abstract: "Kickoff notes." }],
-      messages: [
-        { id: "m1", role: "user", parts: [{ type: "text", text: "hello again" }], created_at: "2026-02-02T09:00:00" },
-      ],
-      estimatedTokens: 42,
-      stats: { totalArchives: 1, includedArchives: 1, droppedArchives: 0, failedArchives: 0, activeTokens: 10, archiveTokens: 32 },
-    });
+  it("rebinds the live session to a restored conversation via the conversations runtime", async () => {
+    const getSession = vi.fn().mockResolvedValue({ session_id: "s-1", message_count: 12 });
+    const sessionRebindStore = createSessionRebindStore();
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({
-        listSessions: vi.fn(),
-        getSession: vi.fn(),
-        getSessionContext,
-      }),
-      formatMessage: (msg) => `[${msg.role}] ${msg.parts?.[0]?.text ?? ""}`,
+      getClient: async () => ({ listSessions: vi.fn(), getSession }),
+      sessionRebindStore,
     });
 
-    const result = await runtime.runConversations({ action: "restore", sessionId: "s-1", tokenBudget: 8000 }, "worker");
+    const result = await runtime.runConversations(
+      { action: "restore", sessionId: "s-1" },
+      { agentId: "worker", ovSessionId: "cur-ov" },
+    );
 
-    expect(getSessionContext).toHaveBeenCalledWith("s-1", 8000, "worker");
-    const text = result.content[0]!.text;
-    expect(text).toContain("Restored conversation: s-1");
-    expect(text).toContain("We discussed the migration plan.");
-    expect(text).toContain("Kickoff notes.");
-    expect(text).toContain("hello again");
-    expect(result.details?.action).toBe("restore_conversation");
+    // Target validated, then the current session is rebound to it.
+    expect(getSession).toHaveBeenCalledWith("s-1", "worker");
+    expect(sessionRebindStore.getTarget("cur-ov")).toBe("s-1");
+    expect(result.content[0]!.text).toContain("Resumed conversation s-1");
+    expect(result.details?.action).toBe("resume_conversation");
+  });
+
+  it("refuses to restore without a current session id", async () => {
+    const runtime = createOpenVikingConversationsRuntime({
+      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn() }),
+      sessionRebindStore: createSessionRebindStore(),
+    });
+
+    await expect(
+      runtime.runConversations({ action: "restore", sessionId: "s-1" }, { agentId: "worker" }),
+    ).rejects.toThrow(/current session/i);
   });
 
   it("keeps recall trace route paths stable across legacy and HTTP adapters", () => {

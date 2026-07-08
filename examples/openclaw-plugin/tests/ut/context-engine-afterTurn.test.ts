@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { OpenVikingClient } from "../../client.js";
 import { memoryOpenVikingConfigSchema } from "../../config.js";
 import { createMemoryOpenVikingContextEngine } from "../../context-engine.js";
+import { createSessionRebindStore, type SessionRebindStore } from "../../session-rebind-store.js";
 
 function makeLogger() {
   return {
@@ -18,6 +19,7 @@ function makeEngine(opts?: {
   getSession?: Record<string, unknown>;
   addSessionMessageError?: Error;
   cfgOverrides?: Record<string, unknown>;
+  sessionRebindStore?: SessionRebindStore;
 }) {
   const cfg = memoryOpenVikingConfigSchema.parse({
     mode: "remote",
@@ -65,6 +67,7 @@ function makeEngine(opts?: {
     logger,
     getClient,
     resolveAgentId,
+    sessionRebindStore: opts?.sessionRebindStore,
   });
 
   return {
@@ -174,6 +177,25 @@ describe("context-engine afterTurn()", () => {
     // Second call: assistant message
     expect(client.addSessionMessage.mock.calls[1][1]).toBe("assistant");
     expect(client.addSessionMessage.mock.calls[1][2][0].text).toContain("hi there");
+  });
+
+  it("writes new turns into the rebound (restored) session when a rebind is set", async () => {
+    const sessionRebindStore = createSessionRebindStore();
+    sessionRebindStore.setRebind("s1", "resumed-s");
+    const { engine, client } = makeEngine({ sessionRebindStore });
+
+    await engine.afterTurn!({
+      sessionId: "s1",
+      sessionFile: "",
+      messages: [
+        { role: "user", content: "old message" },
+        { role: "user", content: "a brand new message" },
+      ],
+      prePromptMessageCount: 1,
+    });
+
+    // New turns persist into the restored session, not the live one ("s1").
+    expect(client.addSessionMessage.mock.calls[0][0]).toBe("resumed-s");
   });
 
   it("passes the latest non-system message timestamp to addSessionMessage as ISO string", async () => {
