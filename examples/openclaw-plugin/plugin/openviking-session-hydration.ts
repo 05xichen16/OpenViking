@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import type { OVMessage, SessionContextResult } from "../client.js";
+import type { OVMessage } from "../client.js";
 import {
   convertToAgentMessages,
   sanitizeAgentMessagesForProvider,
@@ -90,45 +90,38 @@ function withPersistedFields(
 }
 
 /**
- * Build the full transcript entry list (header + message entries) from an
- * OpenViking assembled session context. Earlier (archived) turns are folded
- * into one leading summary message; recent turns are converted verbatim.
+ * Build the full transcript entry list (header + message entries) from verbatim
+ * OpenViking messages (archives + active tail, concatenated oldest-first). If no
+ * verbatim messages are available, fall back to a single summary message.
  */
 export function buildTranscriptEntries(params: {
   sessionId: string;
   cwd: string;
-  ovContext: SessionContextResult;
+  messages: OVMessage[];
+  summaryFallback?: string;
   baseMs: number;
   model: string;
   provider: string;
 }): TranscriptEntry[] {
-  const { sessionId, cwd, ovContext, baseMs, model, provider } = params;
+  const { sessionId, cwd, messages, summaryFallback, baseMs, model, provider } = params;
   const entries: TranscriptEntry[] = [
     { type: "session", version: CURRENT_SESSION_VERSION, id: sessionId, timestamp: isoFromMs(baseMs), cwd },
   ];
 
   const agentMessages: AgentMessage[] = [];
-
-  const overview = (ovContext.latest_archive_overview ?? "").trim();
-  const abstracts = (ovContext.pre_archive_abstracts ?? [])
-    .map((a) => (a?.abstract ?? "").trim())
-    .filter(Boolean);
-  if (overview || abstracts.length > 0) {
-    const summary = [
-      "[Earlier conversation — restored from OpenViking]",
-      overview,
-      ...(abstracts.length ? ["", ...abstracts.map((a) => `- ${a}`)] : []),
-    ]
-      .filter((line, i) => line !== "" || i > 0)
-      .join("\n");
-    agentMessages.push({ role: "user", content: summary });
-  }
-
-  const ovMessages: OVMessage[] = Array.isArray(ovContext.messages) ? ovContext.messages : [];
-  for (const ovMsg of ovMessages) {
+  for (const ovMsg of Array.isArray(messages) ? messages : []) {
     for (const converted of convertToAgentMessages({ role: ovMsg.role, parts: ovMsg.parts })) {
       agentMessages.push(converted);
     }
+  }
+
+  // Only when the session has no verbatim messages (e.g. everything was
+  // summarized away and the tail is empty) do we seed the archived summary.
+  if (agentMessages.length === 0 && summaryFallback && summaryFallback.trim()) {
+    agentMessages.push({
+      role: "user",
+      content: `[Earlier conversation — restored from OpenViking]\n${summaryFallback.trim()}`,
+    });
   }
 
   const sanitized = sanitizeAgentMessagesForProvider(agentMessages);
@@ -205,7 +198,8 @@ export type HydrateResult = {
  */
 export async function hydrateSessionToLocalStore(params: {
   ovSessionId: string;
-  ovContext: SessionContextResult;
+  messages: OVMessage[];
+  summaryFallback?: string;
   openclawAgentId: string;
   stateDir: string;
   cwd: string;
@@ -225,7 +219,8 @@ export async function hydrateSessionToLocalStore(params: {
   const entries = buildTranscriptEntries({
     sessionId: params.ovSessionId,
     cwd: params.cwd,
-    ovContext: params.ovContext,
+    messages: params.messages,
+    summaryFallback: params.summaryFallback,
     baseMs: params.nowMs,
     model,
     provider,

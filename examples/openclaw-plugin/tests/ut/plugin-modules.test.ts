@@ -199,15 +199,17 @@ describe("plugin module seams", () => {
     expect(result.details?.shown).toBe(2);
   });
 
-  it("restore hydrates the session locally and returns the native /session command", async () => {
-    const ovContext = {
+  it("restore hydrates the full verbatim transcript and returns the native /session command", async () => {
+    const getSessionContext = vi.fn().mockResolvedValue({
       latest_archive_overview: "Earlier we discussed the migration.",
-      pre_archive_abstracts: [],
-      messages: [],
-      estimatedTokens: 10,
-      stats: { totalArchives: 1, includedArchives: 1, droppedArchives: 0, failedArchives: 0, activeTokens: 0, archiveTokens: 10 },
-    };
-    const getSessionContext = vi.fn().mockResolvedValue(ovContext);
+      messages: [{ id: "tail", role: "assistant", parts: [{ type: "text", text: "done." }], created_at: "" }],
+      stats: { totalArchives: 2 },
+    });
+    // Two archives of verbatim messages, reconstructed oldest-first.
+    const getArchiveMessages = vi.fn().mockResolvedValue([
+      { id: "a0", role: "user", parts: [{ type: "text", text: "start" }], created_at: "" },
+      { id: "a1", role: "assistant", parts: [{ type: "text", text: "middle" }], created_at: "" },
+    ]);
     const hydrateSession = vi.fn().mockResolvedValue({
       sessionKey: "agent:main:s-1",
       sessionFile: "/home/u/.openclaw/agents/main/sessions/s-1.jsonl",
@@ -215,7 +217,7 @@ describe("plugin module seams", () => {
       messageCount: 3,
     });
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn(), getSessionContext }),
+      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn(), getSessionContext, getArchiveMessages }),
       hydrateSession,
     });
 
@@ -225,10 +227,12 @@ describe("plugin module seams", () => {
     );
 
     expect(getSessionContext).toHaveBeenCalledWith("s-1", 8000, "worker");
-    // OpenClaw agent id is parsed from the current session key ("main").
-    expect(hydrateSession).toHaveBeenCalledWith(
-      expect.objectContaining({ ovSessionId: "s-1", ovContext, openclawAgentId: "main" }),
-    );
+    // All archives (from stats.totalArchives) are pulled for verbatim history.
+    expect(getArchiveMessages).toHaveBeenCalledWith("s-1", 2, "worker");
+    // Archived turns precede the active tail; the OpenClaw agent id comes from the key.
+    const hydrateArg = hydrateSession.mock.calls[0]![0];
+    expect(hydrateArg.openclawAgentId).toBe("main");
+    expect(hydrateArg.messages.map((m: { id: string }) => m.id)).toEqual(["a0", "a1", "tail"]);
     const text = result.content[0]!.text;
     expect(text).toContain("/session agent:main:s-1");
     expect(text).toContain("openclaw tui --session agent:main:s-1");
@@ -238,7 +242,7 @@ describe("plugin module seams", () => {
   it("restore surfaces a not-found target conversation", async () => {
     const getSessionContext = vi.fn().mockRejectedValue(new Error("NOT_FOUND"));
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn(), getSessionContext }),
+      getClient: async () => ({ listSessions: vi.fn(), getSession: vi.fn(), getSessionContext, getArchiveMessages: vi.fn() }),
       hydrateSession: vi.fn(),
     });
 

@@ -954,6 +954,35 @@ export class OpenVikingClient {
     );
   }
 
+  /**
+   * Verbatim messages for archives archive_000..archive_{count-1}, concatenated
+   * oldest-first. Best-effort: missing/failed archives are skipped. Used to
+   * reconstruct a full transcript (getSessionContext only returns the summarized
+   * view + active tail).
+   */
+  async getArchiveMessages(
+    sessionId: string,
+    archiveCount: number,
+    actorPeerId?: string,
+  ): Promise<OVMessage[]> {
+    const count = Math.max(0, Math.min(Math.floor(archiveCount || 0), 200));
+    if (count === 0) {
+      return [];
+    }
+    const archiveIds = Array.from(
+      { length: count },
+      (_, index) => `archive_${String(index).padStart(3, "0")}`,
+    );
+    const perArchive = await Promise.all(
+      archiveIds.map((archiveId) =>
+        this.getSessionArchive(sessionId, archiveId, actorPeerId)
+          .then((archive) => (Array.isArray(archive.messages) ? archive.messages : []))
+          .catch(() => [] as OVMessage[]),
+      ),
+    );
+    return perArchive.flat();
+  }
+
   async grepSessionArchives(
     sessionId: string,
     pattern: string,

@@ -1,4 +1,4 @@
-import type { SessionContextResult, SessionListEntry, SessionMetaResult } from "../client.js";
+import type { OVMessage, SessionListEntry, SessionMetaResult } from "../client.js";
 import { parseOpenclawAgentId, type HydrateResult } from "./openviking-session-hydration.js";
 
 export type ConversationsListInput = { action: "list"; limit?: number };
@@ -17,6 +17,12 @@ export type OpenVikingConversationsToolResult = {
   details?: Record<string, unknown>;
 };
 
+type SessionContextLite = {
+  latest_archive_overview?: string;
+  messages?: OVMessage[];
+  stats?: { totalArchives?: number };
+};
+
 type OpenVikingConversationsClient = {
   listSessions: (actorPeerId?: string) => Promise<SessionListEntry[]>;
   getSession: (sessionId: string, actorPeerId?: string) => Promise<SessionMetaResult>;
@@ -24,13 +30,19 @@ type OpenVikingConversationsClient = {
     sessionId: string,
     tokenBudget?: number,
     actorPeerId?: string,
-  ) => Promise<SessionContextResult>;
+  ) => Promise<SessionContextLite>;
+  getArchiveMessages: (
+    sessionId: string,
+    archiveCount: number,
+    actorPeerId?: string,
+  ) => Promise<OVMessage[]>;
 };
 
 /** Writes the restored session into OpenClaw's local store (see openviking-session-hydration). */
 export type HydrateSessionFn = (args: {
   ovSessionId: string;
-  ovContext: SessionContextResult;
+  messages: OVMessage[];
+  summaryFallback?: string;
   openclawAgentId: string;
   label?: string;
 }) => Promise<HydrateResult>;
@@ -160,7 +172,7 @@ export function createOpenVikingConversationsRuntime(
     }
 
     const client = await deps.getClient();
-    let ovContext: SessionContextResult;
+    let ovContext: SessionContextLite;
     try {
       ovContext = await client.getSessionContext(
         targetSessionId,
@@ -171,10 +183,25 @@ export function createOpenVikingConversationsRuntime(
       throw new Error(`Conversation ${targetSessionId} not found or unreadable: ${String(err)}`);
     }
 
+    // Reconstruct the full verbatim transcript: archived turns (archive_000..N-1)
+    // followed by the active tail. getSessionContext only returns a summary + tail.
+    const totalArchives = ovContext.stats?.totalArchives ?? 0;
+    const archiveMessages = await client
+      .getArchiveMessages(targetSessionId, totalArchives, session.agentId)
+      .catch((err) => {
+        deps.logger?.warn?.(
+          `openviking: failed to read archives for ${targetSessionId}: ${String(err)}`,
+        );
+        return [] as OVMessage[];
+      });
+    const activeMessages = Array.isArray(ovContext.messages) ? ovContext.messages : [];
+    const fullMessages = [...archiveMessages, ...activeMessages];
+
     const openclawAgentId = parseOpenclawAgentId(session.sessionKey);
     const result = await deps.hydrateSession({
       ovSessionId: targetSessionId,
-      ovContext,
+      messages: fullMessages,
+      summaryFallback: ovContext.latest_archive_overview,
       openclawAgentId,
       label: `OpenViking ${targetSessionId.slice(0, 8)}`,
     });

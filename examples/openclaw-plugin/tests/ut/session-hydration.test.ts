@@ -9,19 +9,12 @@ import {
   serializeTranscript,
   type TranscriptMessageEntry,
 } from "../../plugin/openviking-session-hydration.js";
-import type { SessionContextResult } from "../../client.js";
+import type { OVMessage } from "../../client.js";
 
 const BASE_MS = 1_767_000_000_000; // fixed for deterministic timestamps
 
-function makeContext(overrides: Partial<SessionContextResult> = {}): SessionContextResult {
-  return {
-    latest_archive_overview: "",
-    pre_archive_abstracts: [],
-    messages: [],
-    estimatedTokens: 0,
-    stats: { totalArchives: 0, includedArchives: 0, droppedArchives: 0, failedArchives: 0, activeTokens: 0, archiveTokens: 0 },
-    ...overrides,
-  };
+function ovMessage(role: string, text: string): OVMessage {
+  return { id: `m-${text}`, role, parts: [{ type: "text", text }], created_at: "" } as OVMessage;
 }
 
 describe("openviking session hydration", () => {
@@ -37,20 +30,13 @@ describe("openviking session hydration", () => {
     expect(resolveOpenclawStateDir({} as NodeJS.ProcessEnv)).toMatch(/[\\/]\.openclaw$/);
   });
 
-  it("builds a valid transcript: header first, then chained message entries", () => {
-    const ctx = makeContext({
-      latest_archive_overview: "We set up the repo.",
-      pre_archive_abstracts: [{ archive_id: "a0", abstract: "Kickoff." }],
-      messages: [
-        { id: "m1", role: "user", parts: [{ type: "text", text: "hello again" }], created_at: "2026-02-02T09:00:00" },
-        { id: "m2", role: "assistant", parts: [{ type: "text", text: "welcome back" }], created_at: "2026-02-02T09:00:05" },
-      ],
-    });
+  it("builds a valid transcript from verbatim messages: header first, then chained entries", () => {
+    const messages = [ovMessage("user", "hello again"), ovMessage("assistant", "welcome back")];
 
     const entries = buildTranscriptEntries({
       sessionId: "550e8400-e29b-41d4-a716-446655440000",
       cwd: "/home/u/project",
-      ovContext: ctx,
+      messages,
       baseMs: BASE_MS,
       model: "test-model",
       provider: "test-provider",
@@ -65,34 +51,49 @@ describe("openviking session hydration", () => {
       cwd: "/home/u/project",
     });
 
-    const messages = entries.slice(1) as TranscriptMessageEntry[];
-    // First message includes the earlier-summary, carrying overview + abstract.
-    expect(messages[0]!.parentId).toBeNull();
-    expect(JSON.stringify(messages[0]!.message)).toContain("restored from OpenViking");
-    expect(JSON.stringify(messages[0]!.message)).toContain("We set up the repo.");
-    expect(JSON.stringify(messages[0]!.message)).toContain("Kickoff.");
+    const msgs = entries.slice(1) as TranscriptMessageEntry[];
+    expect(msgs[0]!.parentId).toBeNull();
 
     // parentId forms a linear chain and every entry id is unique.
-    const ids = messages.map((m) => m.id);
+    const ids = msgs.map((m) => m.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (let i = 1; i < messages.length; i += 1) {
-      expect(messages[i]!.parentId).toBe(messages[i - 1]!.id);
+    for (let i = 1; i < msgs.length; i += 1) {
+      expect(msgs[i]!.parentId).toBe(msgs[i - 1]!.id);
     }
 
-    // Verbatim recent messages are present; assistant carries persisted accounting fields.
-    const flat = JSON.stringify(messages);
+    // Verbatim turns are present; assistant carries persisted accounting fields.
+    const flat = JSON.stringify(msgs);
     expect(flat).toContain("hello again");
     expect(flat).toContain("welcome back");
-    const assistant = messages.find((m) => (m.message as { role?: string }).role === "assistant");
+    // No summary message is injected when verbatim messages exist.
+    expect(flat).not.toContain("restored from OpenViking");
+    const assistant = msgs.find((m) => (m.message as { role?: string }).role === "assistant");
     expect(assistant?.message).toMatchObject({ role: "assistant", provider: "test-provider", model: "test-model", stopReason: "stop" });
     expect(typeof (assistant?.message as { timestamp?: unknown }).timestamp).toBe("number");
+  });
+
+  it("falls back to the archived summary only when there are no verbatim messages", () => {
+    const entries = buildTranscriptEntries({
+      sessionId: "s-1",
+      cwd: "",
+      messages: [],
+      summaryFallback: "We set up the repo.",
+      baseMs: BASE_MS,
+      model: "m",
+      provider: "p",
+    });
+    const msgs = entries.slice(1) as TranscriptMessageEntry[];
+    expect(msgs).toHaveLength(1);
+    const body = JSON.stringify(msgs[0]!.message);
+    expect(body).toContain("Earlier conversation — restored from OpenViking");
+    expect(body).toContain("We set up the repo.");
   });
 
   it("serializes entries to newline-terminated JSONL, one JSON object per line", () => {
     const entries = buildTranscriptEntries({
       sessionId: "s-1",
       cwd: "",
-      ovContext: makeContext({ messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "hi" }], created_at: "" }] }),
+      messages: [ovMessage("user", "hi")],
       baseMs: BASE_MS,
       model: "m",
       provider: "p",
