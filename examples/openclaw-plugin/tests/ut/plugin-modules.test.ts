@@ -160,18 +160,52 @@ describe("plugin module seams", () => {
   it("parses /conversations command arguments across list and restore forms", () => {
     expect(parseConversationsCommandArgs("")).toEqual({ action: "list", limit: undefined });
     expect(parseConversationsCommandArgs("list --limit 5")).toEqual({ action: "list", limit: 5 });
+    expect(parseConversationsCommandArgs("ls")).toEqual({ action: "list", limit: undefined });
+
+    // Explicit restore verb with an id/prefix target.
     expect(parseConversationsCommandArgs("restore sess-1 --tokens 4000")).toEqual({
       action: "restore",
-      sessionId: "sess-1",
+      selector: { kind: "id", value: "sess-1" },
       tokenBudget: 4000,
     });
-    // A bare, non-verb positional is treated as a restore target.
+    // A bare, non-verb positional is a restore target.
     expect(parseConversationsCommandArgs("sess-abc")).toEqual({
       action: "restore",
-      sessionId: "sess-abc",
+      selector: { kind: "id", value: "sess-abc" },
       tokenBudget: undefined,
     });
+    // A bare integer is a list row number.
+    expect(parseConversationsCommandArgs("3")).toEqual({
+      action: "restore",
+      selector: { kind: "index", value: 3 },
+      tokenBudget: undefined,
+    });
+    expect(parseConversationsCommandArgs("restore 2 --tokens 8000")).toEqual({
+      action: "restore",
+      selector: { kind: "index", value: 2 },
+      tokenBudget: 8000,
+    });
+    // resume / last / latest -> most recent.
+    expect(parseConversationsCommandArgs("resume")).toEqual({
+      action: "restore",
+      selector: { kind: "latest" },
+      tokenBudget: undefined,
+    });
+    expect(parseConversationsCommandArgs("last")).toEqual({
+      action: "restore",
+      selector: { kind: "latest" },
+      tokenBudget: undefined,
+    });
+    // resume can also take an explicit target.
+    expect(parseConversationsCommandArgs("resume 1")).toEqual({
+      action: "restore",
+      selector: { kind: "index", value: 1 },
+      tokenBudget: undefined,
+    });
+
+    // restore still requires a target; a zero/negative row is rejected.
     expect(() => parseConversationsCommandArgs("restore")).toThrow(/Usage: \/conversations/);
+    expect(() => parseConversationsCommandArgs("0")).toThrow(/1 or greater/);
   });
 
   it("lists conversations enriched and newest-first through the conversations runtime", async () => {
@@ -221,14 +255,16 @@ describe("plugin module seams", () => {
       hydrateSession,
     });
 
+    // A full session id (>= 32 chars) resolves directly, without listing.
+    const fullId = "0ac08439-5351-4bb0-aa15-c95a62d99a80";
     const result = await runtime.runConversations(
-      { action: "restore", sessionId: "s-1", tokenBudget: 8000 },
+      { action: "restore", selector: { kind: "id", value: fullId }, tokenBudget: 8000 },
       { agentId: "worker", sessionKey: "agent:main:current-uuid" },
     );
 
-    expect(getSessionContext).toHaveBeenCalledWith("s-1", 8000, "worker");
+    expect(getSessionContext).toHaveBeenCalledWith(fullId, 8000, "worker");
     // All archives (from stats.totalArchives) are pulled for verbatim history.
-    expect(getArchiveMessages).toHaveBeenCalledWith("s-1", 2, "worker");
+    expect(getArchiveMessages).toHaveBeenCalledWith(fullId, 2, "worker");
     // Archived turns precede the active tail; the OpenClaw agent id comes from the key.
     const hydrateArg = hydrateSession.mock.calls[0]![0];
     expect(hydrateArg.openclawAgentId).toBe("main");
@@ -247,8 +283,73 @@ describe("plugin module seams", () => {
     });
 
     await expect(
-      runtime.runConversations({ action: "restore", sessionId: "missing" }, { agentId: "worker", sessionKey: "agent:main:x" }),
+      runtime.runConversations(
+        { action: "restore", selector: { kind: "id", value: "missing-0000-0000-0000-000000000000" } },
+        { agentId: "worker", sessionKey: "agent:main:x" },
+      ),
     ).rejects.toThrow(/not found or unreadable/i);
+  });
+
+  it("resolves restore selectors statelessly against the newest-first list", async () => {
+    // Two sessions; s-new is newest. getSession enriches both for row ordering.
+    const makeClient = () => {
+      const listSessions = vi.fn().mockResolvedValue([
+        { session_id: "s-old", is_dir: true, mod_time: "2026-01-01T09:00:00" },
+        { session_id: "s-new", is_dir: true, mod_time: "2026-02-02T09:00:00" },
+      ]);
+      const getSession = vi.fn(async (id: string) => ({ session_id: id, message_count: 3 }));
+      const getSessionContext = vi.fn().mockResolvedValue({ messages: [], stats: { totalArchives: 0 } });
+      const getArchiveMessages = vi.fn().mockResolvedValue([]);
+      return { listSessions, getSession, getSessionContext, getArchiveMessages };
+    };
+    const hydrateSession = vi.fn().mockResolvedValue({
+      sessionKey: "agent:main:s-new",
+      sessionFile: "/f.jsonl",
+      storePath: "/s.json",
+      messageCount: 0,
+    });
+    const run = (selector: unknown, client: ReturnType<typeof makeClient>) =>
+      createOpenVikingConversationsRuntime({ getClient: async () => client, hydrateSession }).runConversations(
+        { action: "restore", selector } as never,
+        { agentId: "worker", sessionKey: "agent:main:x" },
+      );
+
+    // latest -> newest (s-new)
+    let client = makeClient();
+    await run({ kind: "latest" }, client);
+    expect(client.getSessionContext.mock.calls[0]![0]).toBe("s-new");
+
+    // index 1 -> newest (s-new), index 2 -> s-old
+    client = makeClient();
+    await run({ kind: "index", value: 2 }, client);
+    expect(client.getSessionContext.mock.calls[0]![0]).toBe("s-old");
+
+    // short prefix -> unique match
+    client = makeClient();
+    await run({ kind: "id", value: "s-ne" }, client);
+    expect(client.getSessionContext.mock.calls[0]![0]).toBe("s-new");
+  });
+
+  it("rejects an out-of-range row number and an ambiguous prefix", async () => {
+    const client = {
+      listSessions: vi.fn().mockResolvedValue([
+        { session_id: "s-alpha", is_dir: true, mod_time: "2026-02-02T09:00:00" },
+        { session_id: "s-alpine", is_dir: true, mod_time: "2026-01-01T09:00:00" },
+      ]),
+      getSession: vi.fn(async (id: string) => ({ session_id: id })),
+      getSessionContext: vi.fn(),
+      getArchiveMessages: vi.fn(),
+    };
+    const runtime = createOpenVikingConversationsRuntime({
+      getClient: async () => client,
+      hydrateSession: vi.fn(),
+    });
+    const restore = (selector: unknown) =>
+      runtime.runConversations({ action: "restore", selector } as never, { agentId: "worker", sessionKey: "agent:main:x" });
+
+    await expect(restore({ kind: "index", value: 9 })).rejects.toThrow(/out of range \(1–2\)/);
+    await expect(restore({ kind: "id", value: "s-al" })).rejects.toThrow(/matches 2 conversations/);
+    expect(client.getSessionContext).not.toHaveBeenCalled();
   });
 
   it("keeps recall trace route paths stable across legacy and HTTP adapters", () => {

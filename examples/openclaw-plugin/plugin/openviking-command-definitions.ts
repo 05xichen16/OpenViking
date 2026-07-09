@@ -36,9 +36,14 @@ export type OVSearchCommandInput = {
   limit?: number;
 };
 
+export type ConversationsRestoreSelector =
+  | { kind: "id"; value: string }
+  | { kind: "index"; value: number }
+  | { kind: "latest" };
+
 export type ConversationsCommandInput =
   | { action: "list"; limit?: number }
-  | { action: "restore"; sessionId: string; tokenBudget?: number };
+  | { action: "restore"; selector: ConversationsRestoreSelector; tokenBudget?: number };
 
 export type RecallTraceCommandInput = {
   turn?: "latest" | "all";

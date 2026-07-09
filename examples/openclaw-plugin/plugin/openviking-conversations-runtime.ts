@@ -1,9 +1,23 @@
 import type { OVMessage, SessionListEntry, SessionMetaResult } from "../client.js";
 import { parseOpenclawAgentId, type HydrateResult } from "./openviking-session-hydration.js";
 
+/** See openviking-command-args: how a restore target was addressed on the CLI. */
+export type ConversationsRestoreSelector =
+  | { kind: "id"; value: string }
+  | { kind: "index"; value: number }
+  | { kind: "latest" };
+
 export type ConversationsListInput = { action: "list"; limit?: number };
-export type ConversationsRestoreInput = { action: "restore"; sessionId: string; tokenBudget?: number };
+export type ConversationsRestoreInput = {
+  action: "restore";
+  selector: ConversationsRestoreSelector;
+  tokenBudget?: number;
+};
 export type ConversationsCommandInput = ConversationsListInput | ConversationsRestoreInput;
+
+/** A full OpenViking session id (UUID / 64-hex hash) is at least this long; a
+ * shorter restore token is treated as a prefix and resolved against the list. */
+const FULL_SESSION_ID_MIN_LENGTH = 32;
 
 /** Current-session routing passed from the command handler. */
 export type ConversationsSession = {
@@ -100,7 +114,8 @@ export function formatConversationsList(
   const footer: string[] = [
     "",
     `Showing ${rows.length} of ${opts.total} conversation(s) for the current user.`,
-    "Resume one with: /conversations restore <session_id>",
+    "Restore by number:  /conversations 1   ·   continue latest:  /conversations resume",
+    "Then press /session and pick it — no id to copy.",
   ];
   if (opts.enrichTruncated > 0) {
     footer.push(
@@ -118,12 +133,13 @@ export function createOpenVikingConversationsRuntime(
     session: ConversationsSession,
   ) => Promise<OpenVikingConversationsToolResult>;
 } {
-  const listConversations = async (
-    input: ConversationsListInput,
+  // Fetch + enrich + sort (newest first). Shared by list and by restore's
+  // stateless selector resolution, so a row number always maps to the same
+  // ordering the user just saw in /conversations.
+  const computeConversationRows = async (
     session: ConversationsSession,
-  ): Promise<OpenVikingConversationsToolResult> => {
+  ): Promise<{ rows: ConversationRow[]; enrichTruncated: number }> => {
     const client = await deps.getClient();
-    const limit = Math.max(1, Math.floor(input.limit ?? CONVERSATION_LIST_DEFAULT_LIMIT));
     const entries = (await client.listSessions(session.agentId)).filter(
       (entry) => entry && entry.session_id && entry.is_dir !== false,
     );
@@ -148,6 +164,15 @@ export function createOpenVikingConversationsRuntime(
 
     // Newest first; timestamps are ISO strings so lexicographic sort is chronological.
     rows.sort((a, b) => conversationRowTime(b).localeCompare(conversationRowTime(a)));
+    return { rows, enrichTruncated };
+  };
+
+  const listConversations = async (
+    input: ConversationsListInput,
+    session: ConversationsSession,
+  ): Promise<OpenVikingConversationsToolResult> => {
+    const limit = Math.max(1, Math.floor(input.limit ?? CONVERSATION_LIST_DEFAULT_LIMIT));
+    const { rows, enrichTruncated } = await computeConversationRows(session);
     const top = rows.slice(0, limit);
 
     const text = formatConversationsList(top, { total: rows.length, enrichTruncated });
@@ -162,14 +187,63 @@ export function createOpenVikingConversationsRuntime(
     };
   };
 
+  // Resolve a restore selector to a concrete session id, statelessly. A full id
+  // is used directly (no fetch); index/latest/prefix are resolved against the
+  // same newest-first ordering that /conversations shows.
+  const resolveTargetSessionId = async (
+    selector: ConversationsRestoreSelector,
+    session: ConversationsSession,
+  ): Promise<{ sessionId: string; row?: ConversationRow; note: string }> => {
+    if (selector.kind === "id" && selector.value.length >= FULL_SESSION_ID_MIN_LENGTH) {
+      return { sessionId: selector.value, note: "" };
+    }
+
+    const { rows } = await computeConversationRows(session);
+    if (rows.length === 0) {
+      throw new Error("No OpenViking conversations found to restore. Run /conversations to check.");
+    }
+
+    if (selector.kind === "latest") {
+      return { sessionId: rows[0]!.session_id, row: rows[0], note: " (latest)" };
+    }
+
+    if (selector.kind === "index") {
+      const row = rows[selector.value - 1];
+      if (!row) {
+        throw new Error(
+          `Conversation #${selector.value} is out of range (1–${rows.length}). Run /conversations to see the list.`,
+        );
+      }
+      return { sessionId: row.session_id, row, note: ` (#${selector.value})` };
+    }
+
+    // Short token: match as an id prefix against the visible rows.
+    const value = selector.value;
+    const exact = rows.find((r) => r.session_id === value);
+    if (exact) {
+      return { sessionId: exact.session_id, row: exact, note: "" };
+    }
+    const matches = rows.filter((r) => r.session_id.startsWith(value));
+    if (matches.length === 1) {
+      return { sessionId: matches[0]!.session_id, row: matches[0], note: ` (prefix "${value}")` };
+    }
+    if (matches.length > 1) {
+      const preview = matches.slice(0, 5).map((m) => m.session_id).join(", ");
+      throw new Error(
+        `"${value}" matches ${matches.length} conversations: ${preview}${matches.length > 5 ? ", …" : ""}. Use more characters or a row number.`,
+      );
+    }
+    // Not in the visible list — fall back to treating it as a literal id so a
+    // valid-but-unlisted id still resolves (getSessionContext validates it).
+    return { sessionId: value, note: "" };
+  };
+
   const restoreConversation = async (
     input: ConversationsRestoreInput,
     session: ConversationsSession,
   ): Promise<OpenVikingConversationsToolResult> => {
-    const targetSessionId = input.sessionId.trim();
-    if (!targetSessionId) {
-      throw new Error("session id is required to restore a conversation");
-    }
+    const resolved = await resolveTargetSessionId(input.selector, session);
+    const targetSessionId = resolved.sessionId;
 
     const client = await deps.getClient();
     let ovContext: SessionContextLite;
@@ -206,9 +280,21 @@ export function createOpenVikingConversationsRuntime(
       label: `OpenViking ${targetSessionId.slice(0, 8)}`,
     });
 
+    const metaBits: string[] = [];
+    if (resolved.row) {
+      const updated = formatConversationTimestamp(conversationRowTime(resolved.row));
+      if (updated && updated !== "-") {
+        metaBits.push(`updated ${updated}`);
+      }
+      const msgs = resolved.row.meta?.total_message_count ?? resolved.row.meta?.message_count;
+      if (typeof msgs === "number") {
+        metaBits.push(`${msgs} msg(s)`);
+      }
+    }
+    const metaSuffix = metaBits.length > 0 ? ` — ${metaBits.join(", ")}` : "";
     const text = [
-      `Restored conversation ${targetSessionId} into your local OpenClaw sessions (${result.messageCount} message(s)).`,
-      "Switch to it and keep chatting:",
+      `Restored conversation ${targetSessionId}${resolved.note}${metaSuffix} into your local OpenClaw sessions (${result.messageCount} message(s) written).`,
+      "Continue it — press /session and pick it (it is the most recent), or:",
       `  /session ${result.sessionKey}`,
       `  (or from a shell:  openclaw tui --session ${result.sessionKey} )`,
     ].join("\n");
@@ -216,6 +302,7 @@ export function createOpenVikingConversationsRuntime(
       content: [{ type: "text" as const, text }],
       details: {
         action: "hydrate_conversation",
+        selector: input.selector,
         targetSessionId,
         sessionKey: result.sessionKey,
         sessionFile: result.sessionFile,

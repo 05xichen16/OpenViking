@@ -21,9 +21,19 @@ export type OVSearchCommandArgs = {
   limit?: number;
 };
 
+/**
+ * How a restore target was addressed on the command line. Concrete resolution
+ * (index/prefix/latest -> session id) happens statelessly in the runtime, which
+ * has the session list; the parser only classifies the token.
+ */
+export type ConversationsRestoreSelector =
+  | { kind: "id"; value: string }
+  | { kind: "index"; value: number }
+  | { kind: "latest" };
+
 export type ConversationsCommandArgs =
   | { action: "list"; limit?: number }
-  | { action: "restore"; sessionId: string; tokenBudget?: number };
+  | { action: "restore"; selector: ConversationsRestoreSelector; tokenBudget?: number };
 
 export function tokenizeCommandArgs(args: string): string[] {
   const tokens: string[] = [];
@@ -191,32 +201,58 @@ export function parseOVSearchCommandArgs(args: string): OVSearchCommandArgs {
 }
 
 export const CONVERSATIONS_USAGE =
-  "Usage: /conversations [list] [--limit N]  |  /conversations restore <session_id> [--tokens N]";
+  "Usage: /conversations [list] [--limit N]  |  /conversations <#|id|prefix> [--tokens N]  |  /conversations resume";
+
+const LATEST_WORDS = new Set(["last", "latest"]);
+
+/** Classify a restore target token: a number is a list row, else id/prefix. */
+function parseRestoreSelector(target: string): ConversationsRestoreSelector {
+  const trimmed = target.trim();
+  if (!trimmed || LATEST_WORDS.has(trimmed.toLowerCase())) {
+    return { kind: "latest" };
+  }
+  if (/^\d+$/.test(trimmed)) {
+    const value = Number(trimmed);
+    if (!Number.isInteger(value) || value < 1) {
+      throw new Error("Conversation number must be 1 or greater.");
+    }
+    return { kind: "index", value };
+  }
+  return { kind: "id", value: trimmed };
+}
 
 export function parseConversationsCommandArgs(args: string): ConversationsCommandArgs {
   const parsed = parseFlagArgs(args);
   const [first, second] = parsed.positionals;
   const sub = (first ?? "").toLowerCase();
-  const restoreVerbs = new Set(["restore", "resume", "open", "show"]);
-  const listVerbs = new Set(["", "list", "ls"]);
+  const tokenBudget = getNumberFlag(parsed.flags, "tokens");
 
-  if (restoreVerbs.has(sub)) {
-    const sessionId = (second ?? "").trim();
-    if (!sessionId) {
-      throw new Error(CONVERSATIONS_USAGE);
-    }
-    return { action: "restore", sessionId, tokenBudget: getNumberFlag(parsed.flags, "tokens") };
+  // `resume` doubles as a bare "restore the latest" shortcut and as a verb that
+  // takes an explicit target (`resume 3`, `resume <id>`).
+  if (sub === "resume") {
+    return { action: "restore", selector: parseRestoreSelector(second ?? ""), tokenBudget };
   }
 
-  if (listVerbs.has(sub)) {
+  // `restore`/`open`/`show` require an explicit target.
+  if (sub === "restore" || sub === "open" || sub === "show") {
+    const target = (second ?? "").trim();
+    if (!target) {
+      throw new Error(CONVERSATIONS_USAGE);
+    }
+    return { action: "restore", selector: parseRestoreSelector(target), tokenBudget };
+  }
+
+  // Bare `last`/`latest` -> most recent conversation.
+  if (LATEST_WORDS.has(sub)) {
+    return { action: "restore", selector: { kind: "latest" }, tokenBudget };
+  }
+
+  // Empty / `list` / `ls` -> list.
+  if (sub === "" || sub === "list" || sub === "ls") {
     return { action: "list", limit: getNumberFlag(parsed.flags, "limit") };
   }
 
-  // A bare, non-verb positional is treated as a session id to restore, so
-  // `/conversations <session_id>` works as a shortcut for the restore verb.
-  return {
-    action: "restore",
-    sessionId: first!.trim(),
-    tokenBudget: getNumberFlag(parsed.flags, "tokens"),
-  };
+  // Any other bare positional is a restore target: `/conversations 3`,
+  // `/conversations 0ac0`, `/conversations <full-uuid>`.
+  return { action: "restore", selector: parseRestoreSelector(first!), tokenBudget };
 }
