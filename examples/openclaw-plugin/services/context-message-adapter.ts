@@ -239,17 +239,16 @@ export function mergeConsecutiveUsers(messages: AgentMessage[]): AgentMessage[] 
 }
 
 /**
- * Defensive role-alternation invariant check.
+ * Standalone role-alternation guard that resolves an assistant-assistant
+ * adjacency by inserting a placeholder user message.
  *
- * After mergeConsecutiveUsers + mergeConsecutiveAssistants, the message stream
- * should already alternate user/assistant. But sanitizeToolUseResultPairing
- * can in rare cases strip a user_with_tool_result message that was the only
- * thing separating two assistant messages, leaving an assistant-assistant
- * adjacency that upstream merge passes can't fix.
- *
- * When detected, we insert a placeholder user message — matching Claude Code's
- * NO_CONTENT_MESSAGE pattern (see CC src/utils/messages.ts:5375-5388) — to
- * preserve the alternation contract that Gemini / Anthropic require.
+ * NOTE: This is intentionally NOT part of sanitizeAgentMessagesForProvider.
+ * OpenClaw core resolves same-role adjacencies by MERGING turns
+ * (validateAnthropicTurns), never by injecting placeholder turns, and the
+ * provider sanitizer follows that model — mergeConsecutiveAssistants already
+ * removes every assistant-assistant adjacency, so a placeholder pass would only
+ * ever fabricate empty "(no content)" turns. Kept as a tested helper for callers
+ * that specifically want placeholder-based alternation instead of merging.
  */
 export function ensureAlternation(messages: AgentMessage[]): AgentMessage[] {
   const result: AgentMessage[] = [];
@@ -360,16 +359,24 @@ function canonicalizeAgentMessages(messages: AgentMessage[]): AgentMessage[] {
 export function sanitizeAgentMessagesForProvider(messages: AgentMessage[]): AgentMessage[] {
   normalizeAssistantContent(messages);
   const canonical = canonicalizeAgentMessages(messages);
-  // Defense in depth (issue #1724):
-  //   1) sanitizeToolUseResultPairing may strip orphaned tool_use/tool_result,
-  //      potentially creating new user-user or assistant-assistant adjacencies.
-  //   2) mergeConsecutiveUsers fixes user-user (mirror of mergeConsecutiveAssistants
-  //      already running inside buildSessionContext).
-  //   3) ensureAlternation is a final invariant check for the rare
-  //      assistant-assistant case that the merges can't reach.
-  return ensureAlternation(
-    mergeConsecutiveUsers(
-      sanitizeToolUseResultPairing(canonical as never[]) as AgentMessage[],
-    ),
-  );
+  // Mirror OpenClaw core's turn normalization step for step (validateAnthropicTurns
+  // in src/agents/embedded-agent-helpers/turns.ts, invoked from replay-history.ts):
+  //   1) mergeConsecutiveAssistants — collapse assistant runs FIRST. OpenClaw
+  //      merges before repairing tool pairing so an assistant turn wedged between
+  //      a tool call and its result cannot make the pairing pass treat that
+  //      result as an orphan and drop it.
+  //   2) sanitizeToolUseResultPairing — repair tool-use/result pairing; the
+  //      plugin superset of OpenClaw's stripDanglingAnthropicToolUses.
+  //   3) mergeConsecutiveUsers — collapse user runs last.
+  // OpenClaw resolves every same-role adjacency by MERGING content, never by
+  // injecting a placeholder turn. Merging assistants is what stitches an
+  // OpenViking assistant turn — stored as a text message plus one
+  // assistant-per-tool-call message — back into a single valid turn on the
+  // /conversations restore path. The previous ensureAlternation fallback instead
+  // wedged bogus "(no content)" user turns between an assistant's text and its own
+  // tool calls; it is intentionally dropped here to match OpenClaw (after the
+  // merges there is no assistant-assistant adjacency left).
+  const mergedAssistants = mergeConsecutiveAssistants(canonical);
+  const paired = sanitizeToolUseResultPairing(mergedAssistants as never[]) as AgentMessage[];
+  return mergeConsecutiveUsers(paired);
 }

@@ -276,9 +276,12 @@ describe("issue #1724 end-to-end", () => {
       { role: "user", content: "also add comments" },
     ];
 
-    // Simulate the full pipeline that buildAssembledContext now runs:
-    //   sanitizeToolUseResultPairing → mergeConsecutiveUsers → ensureAlternation
-    // (sanitize step is a no-op for this scenario since there are no tool calls)
+    // Exercise the consecutive-user collapse that buildAssembledContext relies
+    // on. The real provider pipeline is
+    //   sanitizeToolUseResultPairing → mergeConsecutiveAssistants → mergeConsecutiveUsers
+    // (mirroring OpenClaw's validateAnthropicTurns); for this tool-free scenario
+    // only mergeConsecutiveUsers does work. ensureAlternation is applied here
+    // purely to assert no assistant-assistant adjacency survives the merge.
     const merged = mergeConsecutiveUsers(assembled);
     const final = ensureAlternation(merged);
 

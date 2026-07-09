@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1320" viewBox="0 0 1920 1320" role="img" aria-labelledby="title desc">
+  <title id="title">OpenClaw OpenViking 插件 conversations 跨实例恢复对话机制</title>
+  <desc id="desc">说明 OpenClaw 插件如何通过 OpenViking 服务端列出历史会话、拉取 context 和 archives、重建本地 OpenClaw session，并在切换后继续读写同一个 OpenViking session。</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#b45309"/>
+    </marker>
+    <filter id="soft-shadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .title { font: 800 38px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 18px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #475569; }
+      .lane { fill: #ffffff; stroke: #d9e2ef; stroke-width: 2; rx: 22; }
+      .lane-head { font: 800 22px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .lane-sub { font: 400 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #64748b; }
+      .box { fill: #ffffff; stroke-width: 2.4; rx: 18; filter: url(#soft-shadow); }
+      .box-blue { stroke: #60a5fa; }
+      .box-green { stroke: #2dd4bf; }
+      .box-amber { stroke: #f59e0b; }
+      .box-red { stroke: #fb7185; }
+      .box-gray { stroke: #94a3b8; }
+      .fill-blue { fill: #eff6ff; }
+      .fill-green { fill: #ecfdf5; }
+      .fill-amber { fill: #fffbeb; }
+      .fill-red { fill: #fff1f2; }
+      .fill-gray { fill: #f8fafc; }
+      .box-title { font: 800 20px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .box-text { font: 400 15px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #334155; }
+      .small { font: 400 13px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #64748b; }
+      .code { font: 600 13px Consolas, "SF Mono", monospace; fill: #1e40af; }
+      .code-green { font: 600 13px Consolas, "SF Mono", monospace; fill: #0f766e; }
+      .code-amber { font: 600 13px Consolas, "SF Mono", monospace; fill: #92400e; }
+      .tag { font: 800 13px Consolas, "SF Mono", monospace; fill: #ffffff; }
+      .step { font: 900 18px Arial, sans-serif; fill: #ffffff; }
+      .arrow-label { font: 700 13px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #1d4ed8; }
+      .note-title { font: 800 17px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #0f172a; }
+      .note-text { font: 400 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #475569; }
+      .note-text-light { font: 400 14px "Microsoft YaHei", "PingFang SC", Arial, sans-serif; fill: #e2e8f0; }
+      .muted-line { stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 6 7; }
+      .blue-line { stroke: #2563eb; stroke-width: 3; fill: none; marker-end: url(#arrow-blue); }
+      .green-line { stroke: #0f766e; stroke-width: 3; fill: none; marker-end: url(#arrow-green); }
+      .amber-line { stroke: #b45309; stroke-width: 3; fill: none; marker-end: url(#arrow-amber); }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1920" height="1320"/>
+
+  <text class="title" x="80" y="62">OpenViking 插件 /conversations 跨实例恢复对话机制</text>
+  <text class="subtitle" x="80" y="96">核心逻辑：服务端 session 是事实源；实例 B 通过 HTTP 拉回完整 transcript，写成本地 OpenClaw session，再用原生 /session 继续聊。</text>
+
+  <rect class="lane" x="50" y="130" width="560" height="1068"/>
+  <rect class="lane" x="680" y="130" width="560" height="1068"/>
+  <rect class="lane" x="1310" y="130" width="560" height="1068"/>
+
+  <text class="lane-head" x="85" y="172">OpenClaw 插件 / 本地实例</text>
+  <text class="lane-sub" x="85" y="197">命令注册、runtime、hydrate、本地 session store</text>
+  <text class="lane-head" x="715" y="172">OpenViking Server API</text>
+  <text class="lane-sub" x="715" y="197">统一由 OpenVikingClient 带租户和 peer header 调用</text>
+  <text class="lane-head" x="1345" y="172">服务端会话存储</text>
+  <text class="lane-sub" x="1345" y="197">viking://user/sessions/{session_id}/ 是事实源</text>
+
+  <!-- Section separator -->
+  <line class="muted-line" x1="70" y1="352" x2="1850" y2="352"/>
+  <text class="small" x="82" y="340">平时写入历史</text>
+  <text class="small" x="82" y="373">跨实例恢复和续聊</text>
+
+  <!-- Step badges -->
+  <circle cx="92" cy="238" r="18" fill="#2563eb"/><text class="step" x="86" y="245">0</text>
+  <circle cx="92" cy="432" r="18" fill="#2563eb"/><text class="step" x="86" y="439">1</text>
+  <circle cx="92" cy="612" r="18" fill="#2563eb"/><text class="step" x="86" y="619">2</text>
+  <circle cx="92" cy="786" r="18" fill="#2563eb"/><text class="step" x="86" y="793">3</text>
+  <circle cx="92" cy="965" r="18" fill="#2563eb"/><text class="step" x="86" y="972">4</text>
+  <circle cx="92" cy="1130" r="18" fill="#2563eb"/><text class="step" x="86" y="1137">5</text>
+
+  <!-- 0: historical write -->
+  <rect class="box box-blue fill-blue" x="120" y="220" width="455" height="104"/>
+  <text class="box-title" x="145" y="252">实例 A 正常对话写入</text>
+  <text class="box-text" x="145" y="280">afterTurn 只追加本轮新增 user / assistant</text>
+  <text class="code" x="145" y="303">openClawSessionToOvStorageId(sessionId, sessionKey)</text>
+  <text class="small" x="145" y="322">context-lifecycle-service.ts</text>
+
+  <rect class="box box-green fill-green" x="735" y="220" width="455" height="104"/>
+  <text class="box-title" x="760" y="252">追加消息 / 触发提交</text>
+  <text class="code-green" x="760" y="280">POST /api/v1/sessions/{id}/messages</text>
+  <text class="code-green" x="760" y="303">POST /api/v1/sessions/{id}/commit</text>
+  <text class="small" x="760" y="322">达到阈值 async commit；/compact 是 wait=true</text>
+
+  <rect class="box box-amber fill-amber" x="1365" y="220" width="455" height="104"/>
+  <text class="box-title" x="1390" y="252">服务端形成可恢复材料</text>
+  <text class="code-amber" x="1390" y="278">messages.jsonl</text>
+  <text class="code-amber" x="1390" y="301">history/archive_000/messages.jsonl + .overview.md + .done</text>
+  <text class="small" x="1390" y="322">commit 后归档；活跃尾部继续留在 messages.jsonl</text>
+
+  <path class="blue-line" d="M575 272 H735"/>
+  <path class="green-line" d="M1190 272 H1365"/>
+
+  <!-- Identity note -->
+  <rect class="box box-gray fill-gray" x="120" y="382" width="455" height="108"/>
+  <text class="box-title" x="145" y="414">身份和路由先定下来</text>
+  <text class="box-text" x="145" y="440">tenant: X-OpenViking-Account / User</text>
+  <text class="box-text" x="145" y="463">peer: X-OpenViking-Actor-Peer = agentId</text>
+  <text class="small" x="145" y="480">UUID 原样；否则由 sessionKey 或安全化 sessionId 得到 ovSessionId</text>
+
+  <!-- 1: list -->
+  <rect class="box box-blue fill-blue" x="120" y="502" width="455" height="118"/>
+  <text class="box-title" x="145" y="535">/conversations list</text>
+  <text class="box-text" x="145" y="562">默认 limit=20；只列当前 user 可见的会话</text>
+  <text class="code" x="145" y="586">parseConversationsCommandArgs -&gt; runConversations(list)</text>
+  <text class="small" x="145" y="607">command-definitions.ts / conversations-runtime.ts</text>
+
+  <rect class="box box-green fill-green" x="735" y="502" width="455" height="118"/>
+  <text class="box-title" x="760" y="535">列目录 + 补 meta</text>
+  <text class="code-green" x="760" y="562">GET /api/v1/sessions</text>
+  <text class="code-green" x="760" y="585">GET /api/v1/sessions/{session_id}</text>
+  <text class="small" x="760" y="607">最多补 200 个 session meta；按 updated / mod_time 倒序</text>
+
+  <rect class="box box-amber fill-amber" x="1365" y="502" width="455" height="118"/>
+  <text class="box-title" x="1390" y="535">读取会话目录和 .meta.json</text>
+  <text class="code-amber" x="1390" y="562">viking://user/sessions/</text>
+  <text class="code-amber" x="1390" y="585">{session_id}/.meta.json</text>
+  <text class="small" x="1390" y="607">返回 session_id、mod_time、message_count、participant_agent_ids</text>
+
+  <path class="blue-line" d="M575 560 H735"/>
+  <path class="green-line" d="M1190 560 H1365"/>
+
+  <!-- 2: restore context -->
+  <rect class="box box-blue fill-blue" x="120" y="682" width="455" height="118"/>
+  <text class="box-title" x="145" y="715">/conversations restore &lt;session_id&gt;</text>
+  <text class="box-text" x="145" y="742">用户选一个远端 session id；默认 tokenBudget=128000</text>
+  <text class="code" x="145" y="766">restoreConversation(input, session)</text>
+  <text class="small" x="145" y="788">裸 id 也等价于 restore；resume/open/show 是别名</text>
+
+  <rect class="box box-green fill-green" x="735" y="682" width="455" height="118"/>
+  <text class="box-title" x="760" y="715">先拿 assembled context</text>
+  <text class="code-green" x="760" y="742">GET /api/v1/sessions/{id}/context?token_budget=N</text>
+  <text class="box-text" x="760" y="766">返回 overview + 活跃/未完成尾部 + stats.totalArchives</text>
+  <text class="small" x="760" y="788">注意：context 不是完整逐字历史</text>
+
+  <rect class="box box-amber fill-amber" x="1365" y="682" width="455" height="118"/>
+  <text class="box-title" x="1390" y="715">服务端组装 context</text>
+  <text class="code-amber" x="1390" y="742">latest_archive_overview</text>
+  <text class="code-amber" x="1390" y="765">messages = pending archives + live messages</text>
+  <text class="small" x="1390" y="788">stats.totalArchives 告诉客户端还要补拉多少个归档</text>
+
+  <path class="blue-line" d="M575 740 H735"/>
+  <path class="green-line" d="M1190 740 H1365"/>
+
+  <!-- 3: archive expansion -->
+  <rect class="box box-red fill-red" x="735" y="850" width="455" height="140"/>
+  <text class="box-title" x="760" y="883">再拉逐字归档原文</text>
+  <text class="code-green" x="760" y="911">for archive_000..archive_{N-1}</text>
+  <text class="code-green" x="760" y="934">GET /api/v1/sessions/{id}/archives/{archive_id}</text>
+  <text class="box-text" x="760" y="958">客户端按 archive id 升序拼接，失败归档跳过</text>
+  <text class="small" x="760" y="980">getArchiveMessages 最多读 200 个 archive</text>
+
+  <rect class="box box-amber fill-amber" x="1365" y="850" width="455" height="140"/>
+  <text class="box-title" x="1390" y="883">每个 completed archive</text>
+  <text class="code-amber" x="1390" y="910">history/archive_NNN/.done</text>
+  <text class="code-amber" x="1390" y="933">history/archive_NNN/messages.jsonl</text>
+  <text class="code-amber" x="1390" y="956">.overview.md / .abstract.md</text>
+  <text class="small" x="1390" y="981">sessions.py 读 archive；session.py 读 messages.jsonl</text>
+
+  <path class="green-line" d="M1190 912 H1365"/>
+  <path class="amber-line" d="M1365 944 C1280 944 1280 1004 1190 1004 H600"/>
+
+  <!-- 4: hydrate -->
+  <rect class="box box-blue fill-blue" x="120" y="850" width="455" height="260"/>
+  <text class="box-title" x="145" y="881">本地 hydrate：把远端会话</text>
+  <text class="box-title" x="145" y="906">重建成 OpenClaw session</text>
+  <text class="code" x="145" y="936">fullMessages = archiveMessages + context.messages</text>
+  <text class="code" x="145" y="959">convertToAgentMessages + sanitizeAgentMessages</text>
+  <text class="code" x="145" y="982">buildTranscriptEntries(sessionId = ovSessionId)</text>
+  <text class="box-text" x="145" y="1012">写入本机 OpenClaw store：</text>
+  <text class="code" x="160" y="1038">~/.openclaw/agents/{agent}/sessions/{ovSessionId}.jsonl</text>
+  <text class="code" x="160" y="1061">sessions.json: key = agent:{agent}:{ovSessionId}</text>
+  <text class="code" x="160" y="1084">sessions.json.openviking.bak</text>
+  <text class="small" x="145" y="1099">openviking-session-hydration.ts；无逐字消息才 fallback overview</text>
+
+  <!-- 5: switch and continue -->
+  <rect class="box box-blue fill-blue" x="120" y="1136" width="455" height="104"/>
+  <text class="box-title" x="145" y="1168">返回 OpenClaw 原生切换命令</text>
+  <text class="code" x="145" y="1196">/session agent:{agent}:{ovSessionId}</text>
+  <text class="code" x="145" y="1219">openclaw tui --session agent:{agent}:{ovSessionId}</text>
+
+  <rect class="box box-green fill-green" x="735" y="1070" width="455" height="170"/>
+  <text class="box-title" x="760" y="1103">切过去以后继续同一个 OV session</text>
+  <text class="box-text" x="760" y="1130">assemble：从同一 session_id 读 context</text>
+  <text class="box-text" x="760" y="1154">afterTurn：把新回合 append 到同一 session_id</text>
+  <text class="code-green" x="760" y="1180">GET /sessions/{ovSessionId}/context</text>
+  <text class="code-green" x="760" y="1203">POST /sessions/{ovSessionId}/messages</text>
+  <text class="small" x="760" y="1224">context-engine 支持 rebind override；当前 restore 主链路是 hydrate 后切 session</text>
+
+  <rect class="box box-amber fill-amber" x="1365" y="1070" width="455" height="170"/>
+  <text class="box-title" x="1390" y="1103">远端历史被延续，而不是复制成新历史</text>
+  <text class="code-amber" x="1390" y="1130">viking://user/sessions/{ovSessionId}/messages.jsonl</text>
+  <text class="code-amber" x="1390" y="1153">history/archive_NNN/...</text>
+  <text class="box-text" x="1390" y="1180">之后 commit 会在同一目录继续生成 archive</text>
+  <text class="small" x="1390" y="1205">跨机器靠服务端持久化；本地只是重建 OpenClaw 可读格式</text>
+
+  <path class="blue-line" d="M575 1188 H735"/>
+  <path class="green-line" d="M1190 1156 H1365"/>
+
+  <!-- Result callout -->
+  <rect x="70" y="1262" width="1780" height="40" rx="20" fill="#0f172a"/>
+  <text class="tag" x="95" y="1287">讲解金句</text>
+  <text class="note-text-light" x="185" y="1287">/conversations restore 本质不是“远程打开会话”，而是“从 OpenViking 事实源拉全量 transcript，灌成本地 OpenClaw session；切过去后继续读写同一个 OV session”。</text>
+</svg>
