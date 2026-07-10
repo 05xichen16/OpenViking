@@ -9,6 +9,7 @@ import {
   resolveOpenVikingRequestHeaders,
   type OpenVikingRequestHeaders,
 } from "../request-headers.js";
+import { registerOpenVikingConversationsCommand } from "./conversations-cli.js";
 
 const HOME = os.homedir();
 const OPENCLAW_DIR = getEnv("OPENCLAW_STATE_DIR") || path.join(HOME, ".openclaw");
@@ -597,6 +598,9 @@ export function registerSetupCli(api: any): void {
   api.registerCli(
     ({ program }: RegisterCliArgs) => {
       const ovCmd = program.command("openviking").description("OpenViking plugin commands");
+
+      // Shell-side equivalent of the in-TUI /conversations command.
+      registerOpenVikingConversationsCommand(ovCmd);
 
       ovCmd
         .command("setup")
