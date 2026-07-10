@@ -4,7 +4,10 @@ import {
   createOpenVikingCommandDefinitions,
 } from "../../plugin/openviking-command-definitions.js";
 import { parseConversationsCommandArgs } from "../../plugin/openviking-command-args.js";
-import { createOpenVikingConversationsRuntime } from "../../plugin/openviking-conversations-runtime.js";
+import {
+  createOpenVikingConversationsRuntime,
+  CONVERSATION_ENRICH_CAP,
+} from "../../plugin/openviking-conversations-runtime.js";
 import { registerOpenVikingContextEngine } from "../../plugin/openviking-context-engine-registration.js";
 import { createOpenVikingQueryConfigCommandHandler } from "../../plugin/openviking-query-config-command.js";
 import { createOpenVikingQueryRuntime } from "../../plugin/openviking-query-runtime.js";
@@ -350,6 +353,61 @@ describe("plugin module seams", () => {
     await expect(restore({ kind: "index", value: 9 })).rejects.toThrow(/out of range \(1–2\)/);
     await expect(restore({ kind: "id", value: "s-al" })).rejects.toThrow(/matches 2 conversations/);
     expect(client.getSessionContext).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the newest session beyond the enrich cap when the server sends no mod_time", async () => {
+    // Regression: the server returns entries with EMPTY mod_time in a
+    // non-chronological order, and there are MORE than the enrich cap. The truly
+    // newest session sits beyond the first CONVERSATION_ENRICH_CAP entries, so a
+    // slice-then-sort would drop it. Recency lives only in getSession.updated_at.
+    const total = CONVERSATION_ENRICH_CAP + 50;
+    const newestIdx = CONVERSATION_ENRICH_CAP + 40; // beyond the old first-cap window
+    const entries = Array.from({ length: total }, (_, i) => ({
+      session_id: `s-${String(i).padStart(4, "0")}`,
+      is_dir: true,
+      mod_time: "",
+    }));
+    const listSessions = vi.fn().mockResolvedValue(entries);
+    const getSession = vi.fn(async (id: string) => {
+      const i = Number(id.slice(2));
+      const updated_at =
+        i === newestIdx
+          ? "2026-07-10T09:00:00Z"
+          : `2026-01-${String((i % 27) + 1).padStart(2, "0")}T00:00:00Z`;
+      return { session_id: id, updated_at, message_count: 1 };
+    });
+    const getSessionContext = vi.fn().mockResolvedValue({ messages: [], stats: { totalArchives: 0 } });
+    const runtime = createOpenVikingConversationsRuntime({
+      getClient: async () => ({
+        listSessions,
+        getSession,
+        getSessionContext,
+        getArchiveMessages: vi.fn().mockResolvedValue([]),
+      }),
+      hydrateSession: vi.fn().mockResolvedValue({
+        sessionKey: "agent:main:x",
+        sessionFile: "/f",
+        storePath: "/s",
+        messageCount: 0,
+      }),
+    });
+
+    // `resume` (latest) must resolve to the truly newest session, not whatever
+    // happened to be first in the server's non-chronological listing.
+    await runtime.runConversations(
+      { action: "restore", selector: { kind: "latest" } },
+      { agentId: "worker", sessionKey: "agent:main:x" },
+    );
+    expect(getSessionContext.mock.calls[0]![0]).toBe(`s-${String(newestIdx).padStart(4, "0")}`);
+    // Every session was enriched to determine recency (no pre-sort cap dropped it).
+    expect(getSession.mock.calls.length).toBe(total);
+
+    // And the list shows it at the very top.
+    const list = await runtime.runConversations({ action: "list" }, { agentId: "worker" });
+    const text = list.content[0]!.text;
+    expect(text).toContain(`s-${String(newestIdx).padStart(4, "0")}`);
+    const firstRowLine = text.split("\n").find((l) => /^1\s/.test(l));
+    expect(firstRowLine).toContain(`s-${String(newestIdx).padStart(4, "0")}`);
   });
 
   it("keeps recall trace route paths stable across legacy and HTTP adapters", () => {

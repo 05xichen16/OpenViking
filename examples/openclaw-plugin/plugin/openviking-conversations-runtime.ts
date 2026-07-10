@@ -68,9 +68,45 @@ export type OpenVikingConversationsRuntimeDeps = {
 };
 
 export const CONVERSATION_LIST_DEFAULT_LIMIT = 20;
-/** Cap on per-session metadata lookups so listing stays bounded on large stores. */
+/**
+ * When the server DOES provide per-entry mod_time we can rank without fetching
+ * metadata, so we only enrich the newest this-many sessions.
+ */
 export const CONVERSATION_ENRICH_CAP = 200;
+/**
+ * When the server provides NO per-entry recency (mod_time empty), recency lives
+ * only in per-session metadata, so we must enrich to sort. Bound the fan-out so
+ * a very large store can't stall the command; sessions beyond this are not
+ * inspected. Must be large enough that the newest session is never missed in
+ * normal use.
+ */
+export const CONVERSATION_ENRICH_ALL_MAX = 1000;
+/** Bounded concurrency for per-session metadata fetches. */
+const CONVERSATION_ENRICH_CONCURRENCY = 16;
 export const CONVERSATION_RESTORE_DEFAULT_TOKENS = 128_000;
+
+/** Run `fn` over `items` with at most `limit` in flight, preserving order. */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  const workers = Array.from({ length: workerCount }, async () => {
+    for (;;) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= items.length) {
+        return;
+      }
+      results[index] = await fn(items[index]!, index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
 export type ConversationRow = { session_id: string; modTime: string; meta: SessionMetaResult | null };
 
@@ -119,7 +155,7 @@ export function formatConversationsList(
   ];
   if (opts.enrichTruncated > 0) {
     footer.push(
-      `Note: ${opts.enrichTruncated} older session(s) were not inspected (enrichment cap ${CONVERSATION_ENRICH_CAP}).`,
+      `Note: ${opts.enrichTruncated} session(s) beyond this large store were not inspected.`,
     );
   }
   return [header, ...lines, ...footer].join("\n");
@@ -144,12 +180,32 @@ export function createOpenVikingConversationsRuntime(
       (entry) => entry && entry.session_id && entry.is_dir !== false,
     );
 
-    // Metadata is fetched per session; cap the pool so listing stays bounded.
-    const capped = entries.slice(0, CONVERSATION_ENRICH_CAP);
-    const enrichTruncated = entries.length - capped.length;
-    const rows: ConversationRow[] = await Promise.all(
-      capped.map(async (entry): Promise<ConversationRow> => {
-        const modTime = typeof entry.mod_time === "string" ? entry.mod_time : "";
+    const entryModTime = (entry: SessionListEntry): string =>
+      typeof entry.mod_time === "string" ? entry.mod_time : "";
+    const hasModTime = entries.some((entry) => entryModTime(entry).trim().length > 0);
+
+    // Choose which sessions to fetch metadata for. This MUST NOT cap in the
+    // server's listing order before sorting: that order is not chronological and
+    // (for servers that return empty mod_time) recency is only known after
+    // enrichment, so a plain slice-then-sort silently hides the newest session.
+    //   - mod_time present: rank cheaply on it, enrich only the newest N.
+    //   - mod_time absent:  enrich everything (bounded) so recency is knowable,
+    //                       then sort.
+    let pool: SessionListEntry[];
+    if (hasModTime) {
+      pool = [...entries]
+        .sort((a, b) => entryModTime(b).localeCompare(entryModTime(a)))
+        .slice(0, CONVERSATION_ENRICH_CAP);
+    } else {
+      pool = entries.slice(0, CONVERSATION_ENRICH_ALL_MAX);
+    }
+    const enrichTruncated = Math.max(0, entries.length - pool.length);
+
+    const rows: ConversationRow[] = await mapWithConcurrency(
+      pool,
+      CONVERSATION_ENRICH_CONCURRENCY,
+      async (entry): Promise<ConversationRow> => {
+        const modTime = entryModTime(entry);
         try {
           const meta = await client.getSession(entry.session_id, session.agentId);
           return { session_id: entry.session_id, modTime, meta };
@@ -159,10 +215,10 @@ export function createOpenVikingConversationsRuntime(
           );
           return { session_id: entry.session_id, modTime, meta: null };
         }
-      }),
+      },
     );
 
-    // Newest first; timestamps are ISO strings so lexicographic sort is chronological.
+    // Newest first; ISO timestamps sort lexicographically as chronological.
     rows.sort((a, b) => conversationRowTime(b).localeCompare(conversationRowTime(a)));
     return { rows, enrichTruncated };
   };

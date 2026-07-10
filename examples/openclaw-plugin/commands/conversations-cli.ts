@@ -95,9 +95,11 @@ export function registerOpenVikingConversationsCommand(ovCmd: ConversationsCliCo
       const agent =
         typeof options.agent === "string" && options.agent.trim() ? options.agent.trim() : "main";
 
+      // Primary output goes to real stdout via process.stdout.write: OpenClaw
+      // routes plugin console.log to stderr, which would corrupt `--json | jq`.
       const fail = (message: string): void => {
         if (jsonMode) {
-          console.log(JSON.stringify({ error: message }, null, 2));
+          process.stdout.write(`${JSON.stringify({ error: message }, null, 2)}\n`);
         } else {
           console.error(`OpenViking conversations failed: ${message}`);
         }
@@ -158,9 +160,9 @@ export function registerOpenVikingConversationsCommand(ovCmd: ConversationsCliCo
         });
 
         if (jsonMode) {
-          console.log(JSON.stringify(result.details ?? {}, null, 2));
+          process.stdout.write(`${JSON.stringify(result.details ?? {}, null, 2)}\n`);
         } else {
-          console.log(result.content[0]?.text ?? "");
+          process.stdout.write(`${result.content[0]?.text ?? ""}\n`);
         }
       } catch (err) {
         fail(err instanceof Error ? err.message : String(err));
