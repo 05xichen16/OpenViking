@@ -1,11 +1,19 @@
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   buildSessionStoreEntry,
   buildTranscriptEntries,
+  hydrateSessionToLocalStore,
   mergeSessionStoreEntry,
+  normalizeOpenclawAgentId,
   parseOpenclawAgentId,
+  readOpenclawSessionStore,
   resolveOpenclawStateDir,
+  resolveSessionStorePath,
   serializeTranscript,
   type TranscriptMessageEntry,
 } from "../../plugin/openviking-session-hydration.js";
@@ -49,6 +57,74 @@ describe("openviking session hydration", () => {
   it("resolves the OpenClaw state dir from OPENCLAW_STATE_DIR", () => {
     expect(resolveOpenclawStateDir({ OPENCLAW_STATE_DIR: "/tmp/oc" } as NodeJS.ProcessEnv)).toBe("/tmp/oc");
     expect(resolveOpenclawStateDir({} as NodeJS.ProcessEnv)).toMatch(/[\\/]\.openclaw$/);
+  });
+
+  it("normalizes an OpenClaw agent id the way routing/session-key does", () => {
+    expect(normalizeOpenclawAgentId("main")).toBe("main");
+    expect(normalizeOpenclawAgentId("Work")).toBe("work");
+    expect(normalizeOpenclawAgentId("  Main  ")).toBe("main");
+    expect(normalizeOpenclawAgentId(undefined)).toBe("main");
+    expect(normalizeOpenclawAgentId("")).toBe("main");
+    // "." is not a valid agent-id char (unlike a session id): collapse to "-".
+    expect(normalizeOpenclawAgentId("a.b")).toBe("a-b");
+  });
+
+  it("resolveSessionStorePath: default per-agent store, agent-id normalized", () => {
+    expect(resolveSessionStorePath({ agentId: "main", stateDir: "/tmp/oc" })).toBe(
+      join("/tmp/oc", "agents", "main", "sessions", "sessions.json"),
+    );
+    expect(resolveSessionStorePath({ agentId: "Work", stateDir: "/tmp/oc" })).toBe(
+      join("/tmp/oc", "agents", "work", "sessions", "sessions.json"),
+    );
+  });
+
+  it("resolveSessionStorePath: honors an absolute / ~-relative / {agentId} session.store", () => {
+    // Absolute store wins over the default location.
+    expect(
+      resolveSessionStorePath({ store: "/data/store.json", agentId: "main", stateDir: "/tmp/oc" }),
+    ).toBe(resolve("/data/store.json"));
+    // ~ expands against the provided home.
+    expect(
+      resolveSessionStorePath({
+        store: "~/oc/store.json",
+        agentId: "main",
+        stateDir: "/tmp/oc",
+        home: "/home/u",
+      }),
+    ).toBe(resolve("/home/u/oc/store.json"));
+    // {agentId} template expands with the NORMALIZED id.
+    expect(
+      resolveSessionStorePath({
+        store: "/data/agents/{agentId}/s.json",
+        agentId: "Work",
+        stateDir: "/tmp/oc",
+      }),
+    ).toBe(resolve("/data/agents/work/s.json"));
+    // {agentId} template plus ~ expansion together.
+    expect(
+      resolveSessionStorePath({
+        store: "~/oc/{agentId}/s.json",
+        agentId: "main",
+        stateDir: "/tmp/oc",
+        home: "/home/u",
+      }),
+    ).toBe(resolve("/home/u/oc/main/s.json"));
+  });
+
+  it("readOpenclawSessionStore: reads top-level session.store, undefined when absent", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ov-cfg-"));
+    // Missing file → undefined.
+    expect(readOpenclawSessionStore(dir)).toBeUndefined();
+    // Present with session.store → returns the raw string.
+    writeFileSync(
+      join(dir, "openclaw.json"),
+      JSON.stringify({ session: { store: "~/oc/sessions.json" }, gateway: { port: 1 } }),
+      "utf8",
+    );
+    expect(readOpenclawSessionStore(dir)).toBe("~/oc/sessions.json");
+    // Present but no session.store → undefined.
+    writeFileSync(join(dir, "openclaw.json"), JSON.stringify({ session: { mainKey: "main" } }), "utf8");
+    expect(readOpenclawSessionStore(dir)).toBeUndefined();
   });
 
   it("builds a valid transcript from verbatim messages: header first, then chained entries", () => {
@@ -219,5 +295,56 @@ describe("openviking session hydration", () => {
       modelProvider: "p",
       label: "OpenViking s-1",
     });
+  });
+
+  it("hydrates transcript + store to the default per-agent location when session.store is unset", async () => {
+    const stateDir = mkdtempSync(join(tmpdir(), "ov-hydrate-def-"));
+    const result = await hydrateSessionToLocalStore({
+      ovSessionId: "abc123",
+      messages: [ovMessage("user", "hi"), ovMessage("assistant", "hello")],
+      openclawAgentId: "main",
+      stateDir,
+      cwd: "/proj",
+      nowMs: BASE_MS,
+    });
+
+    const sessionsDir = join(stateDir, "agents", "main", "sessions");
+    expect(result.storePath).toBe(join(sessionsDir, "sessions.json"));
+    expect(result.sessionFile).toBe(join(sessionsDir, "abc123.jsonl"));
+    expect(existsSync(join(sessionsDir, "sessions.json"))).toBe(true);
+    expect(existsSync(join(sessionsDir, "abc123.jsonl"))).toBe(true);
+  });
+
+  it("hydrates transcript + store NEXT TO a custom absolute session.store, not the default dir", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "ov-hydrate-custom-"));
+    const stateDir = join(tmp, "state");
+    const storeDir = join(tmp, "custom");
+    const storePath = join(storeDir, "sessions.json");
+
+    const result = await hydrateSessionToLocalStore({
+      ovSessionId: "abc123",
+      messages: [ovMessage("user", "hi"), ovMessage("assistant", "hello")],
+      openclawAgentId: "main",
+      stateDir,
+      sessionStore: storePath,
+      cwd: "/proj",
+      nowMs: BASE_MS,
+    });
+
+    // Both files land in the store's directory...
+    expect(result.storePath).toBe(resolve(storePath));
+    expect(result.sessionFile).toBe(join(storeDir, "abc123.jsonl"));
+    expect(existsSync(storePath)).toBe(true);
+    expect(existsSync(join(storeDir, "abc123.jsonl"))).toBe(true);
+    // ...and NOTHING is written to the default per-agent location OpenClaw would ignore.
+    expect(existsSync(join(stateDir, "agents", "main", "sessions"))).toBe(false);
+
+    // The persisted entry keeps sessionFile relative so OpenClaw resolves it
+    // against dirname(storePath).
+    const store = JSON.parse(readFileSync(storePath, "utf8")) as Record<
+      string,
+      { sessionFile?: string }
+    >;
+    expect(store["agent:main:abc123"]?.sessionFile).toBe("abc123.jsonl");
   });
 });

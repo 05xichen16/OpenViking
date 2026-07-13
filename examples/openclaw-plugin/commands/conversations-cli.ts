@@ -14,6 +14,7 @@ import { createOpenVikingClientRuntime } from "../plugin/openviking-client-runti
 import { createOpenVikingConversationsRuntime } from "../plugin/openviking-conversations-runtime.js";
 import {
   hydrateSessionToLocalStore,
+  readOpenclawSessionStore,
   resolveOpenclawStateDir,
 } from "../plugin/openviking-session-hydration.js";
 
@@ -147,6 +148,7 @@ export function registerOpenVikingConversationsCommand(ovCmd: ConversationsCliCo
             hydrateSessionToLocalStore({
               ...args,
               stateDir,
+              sessionStore: readOpenclawSessionStore(stateDir),
               cwd: process.cwd(),
               nowMs: Date.now(),
             }),

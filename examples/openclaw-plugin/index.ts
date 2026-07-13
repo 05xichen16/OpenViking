@@ -13,6 +13,7 @@ import { createOpenVikingConversationsRuntime } from "./plugin/openviking-conver
 import { createSessionRebindStore } from "./session-rebind-store.js";
 import {
   hydrateSessionToLocalStore,
+  readOpenclawSessionStore,
   resolveOpenclawStateDir,
 } from "./plugin/openviking-session-hydration.js";
 import { createOpenVikingContextEngineRef } from "./plugin/openviking-context-engine-ref.js";
@@ -270,13 +271,16 @@ const contextEnginePlugin = {
 
     const { runConversations } = createOpenVikingConversationsRuntime({
       getClient,
-      hydrateSession: (args) =>
-        hydrateSessionToLocalStore({
+      hydrateSession: (args) => {
+        const stateDir = resolveOpenclawStateDir();
+        return hydrateSessionToLocalStore({
           ...args,
-          stateDir: resolveOpenclawStateDir(),
+          stateDir,
+          sessionStore: readOpenclawSessionStore(stateDir),
           cwd: process.cwd(),
           nowMs: Date.now(),
-        }),
+        });
+      },
       logger: api.logger,
     });
 

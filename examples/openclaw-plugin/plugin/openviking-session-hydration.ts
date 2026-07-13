@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import type { OVMessage } from "../client.js";
 import {
@@ -43,6 +44,93 @@ export function parseOpenclawAgentId(sessionKey?: string): string {
 export function resolveOpenclawStateDir(env: NodeJS.ProcessEnv = process.env): string {
   const explicit = env.OPENCLAW_STATE_DIR?.trim();
   return explicit || join(homedir(), ".openclaw");
+}
+
+const AGENT_ID_VALID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+
+/**
+ * Mirror OpenClaw's routing/session-key.ts::normalizeAgentId so the session-store
+ * PATH we write to matches the directory OpenClaw physically reads from. OpenClaw
+ * lowercases the id and, for path/shell safety, collapses anything outside
+ * [a-z0-9_-] to "-" (note "." is NOT allowed in an agent id, unlike a session id).
+ */
+export function normalizeOpenclawAgentId(value?: string): string {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) {
+    return "main";
+  }
+  const lower = trimmed.toLowerCase();
+  if (AGENT_ID_VALID_RE.test(trimmed)) {
+    return lower;
+  }
+  return (
+    lower
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+/, "")
+      .replace(/-+$/, "")
+      .slice(0, 64) || "main"
+  );
+}
+
+/** Expand a leading `~`, `~/`, or `~\` against home — mirrors OpenClaw expandHomePrefix. */
+function expandHome(input: string, home: string): string {
+  if (!input.startsWith("~")) {
+    return input;
+  }
+  return input.replace(/^~(?=$|[\\/])/, home);
+}
+
+/**
+ * Resolve the on-disk `sessions.json` store path exactly as OpenClaw does
+ * (src/config/sessions/paths.ts::resolveStorePath), honoring the user's
+ * `session.store` config so a restore writes where OpenClaw actually reads:
+ *   - unset            → <stateDir>/agents/<agentId>/sessions/sessions.json
+ *   - "{agentId}" tmpl → expanded per-agent, then ~-expanded / resolved
+ *   - "~"-relative     → expanded against home
+ *   - otherwise        → resolved as an absolute/relative path
+ * The transcript `.jsonl` is written alongside it (in the store's directory).
+ */
+export function resolveSessionStorePath(params: {
+  store?: string;
+  agentId: string;
+  stateDir: string;
+  home?: string;
+}): string {
+  const agentId = normalizeOpenclawAgentId(params.agentId);
+  const home = params.home ?? homedir();
+  const store = params.store?.trim();
+  if (!store) {
+    return join(params.stateDir, "agents", agentId, "sessions", "sessions.json");
+  }
+  if (store.includes("{agentId}")) {
+    const expanded = store.replaceAll("{agentId}", agentId);
+    return resolve(expanded.startsWith("~") ? expandHome(expanded, home) : expanded);
+  }
+  if (store.startsWith("~")) {
+    return resolve(expandHome(store, home));
+  }
+  return resolve(store);
+}
+
+/**
+ * Read the top-level `session.store` string from <stateDir>/openclaw.json, if any.
+ * Returns undefined when unset/unreadable — callers then fall back to the default
+ * per-agent store location. Same file as commands/conversations-cli.ts's
+ * readOpenVikingRawConfig, different key path (top-level session.store, not the
+ * plugin config).
+ */
+export function readOpenclawSessionStore(stateDir: string): string | undefined {
+  try {
+    const parsed = JSON.parse(readFileSync(join(stateDir, "openclaw.json"), "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const session = parsed?.session as Record<string, unknown> | undefined;
+    const store = session?.store;
+    return typeof store === "string" && store.trim() ? store : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Deterministic 8-hex entry id, unique within a single transcript file. */
@@ -227,6 +315,8 @@ export async function hydrateSessionToLocalStore(params: {
   summaryFallback?: string;
   openclawAgentId: string;
   stateDir: string;
+  /** Raw `session.store` config (openclaw.json); undefined → default per-agent store. */
+  sessionStore?: string;
   cwd: string;
   nowMs: number;
   model?: string;
@@ -235,10 +325,17 @@ export async function hydrateSessionToLocalStore(params: {
 }): Promise<HydrateResult> {
   const model = params.model?.trim() || "openviking-restored";
   const provider = params.provider?.trim() || "openviking";
-  const sessionsDir = join(params.stateDir, "agents", params.openclawAgentId, "sessions");
+  // Write to wherever OpenClaw actually reads its store from (honors session.store),
+  // not a hardcoded path — otherwise a custom-store user's restore lands in a dir
+  // OpenClaw never reads and the session is silently unresumable.
+  const storePath = resolveSessionStorePath({
+    store: params.sessionStore,
+    agentId: params.openclawAgentId,
+    stateDir: params.stateDir,
+  });
+  const sessionsDir = dirname(storePath);
   const fileName = `${params.ovSessionId}.jsonl`;
   const filePath = join(sessionsDir, fileName);
-  const storePath = join(sessionsDir, "sessions.json");
   const sessionKey = `agent:${params.openclawAgentId}:${params.ovSessionId}`;
 
   const entries = buildTranscriptEntries({
