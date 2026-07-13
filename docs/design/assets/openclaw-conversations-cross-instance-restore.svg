@@ -53,8 +53,8 @@
 
   <rect class="bg" x="0" y="0" width="1920" height="1320"/>
 
-  <text class="title" x="80" y="62">OpenViking 插件 /conversations 跨实例恢复对话机制</text>
-  <text class="subtitle" x="80" y="96">核心逻辑：服务端 session 是事实源；实例 B 通过 HTTP 拉回完整 transcript，写成本地 OpenClaw session，再用原生 /session 继续聊。</text>
+  <text class="title" x="80" y="62">openclaw kmm conversations：跨实例恢复对话机制</text>
+  <text class="subtitle" x="80" y="96">核心逻辑：服务端 session 是事实源；实例 B 直接拉回完整 transcript，写成本地 OpenClaw session，再用原生 TUI 继续聊（无需运行 gateway）。</text>
 
   <rect class="lane" x="50" y="130" width="560" height="1068"/>
   <rect class="lane" x="680" y="130" width="560" height="1068"/>
@@ -111,16 +111,16 @@
 
   <!-- 1: list -->
   <rect class="box box-blue fill-blue" x="120" y="502" width="455" height="118"/>
-  <text class="box-title" x="145" y="535">/conversations list</text>
+  <text class="box-title" x="145" y="535">openclaw kmm conversations</text>
   <text class="box-text" x="145" y="562">默认 limit=20；只列当前 user 可见的会话</text>
   <text class="code" x="145" y="586">parseConversationsCommandArgs -&gt; runConversations(list)</text>
-  <text class="small" x="145" y="607">command-definitions.ts / conversations-runtime.ts</text>
+  <text class="small" x="145" y="607">直接读 openclaw.json 并创建 OpenVikingClient</text>
 
   <rect class="box box-green fill-green" x="735" y="502" width="455" height="118"/>
-  <text class="box-title" x="760" y="535">列目录 + 补 meta</text>
+  <text class="box-title" x="760" y="535">列目录 + meta + 描述</text>
   <text class="code-green" x="760" y="562">GET /api/v1/sessions</text>
   <text class="code-green" x="760" y="585">GET /api/v1/sessions/{session_id}</text>
-  <text class="small" x="760" y="607">最多补 200 个 session meta；按 updated / mod_time 倒序</text>
+  <text class="small" x="760" y="607">展示行再取 1500-token context preview；按更新时间倒序</text>
 
   <rect class="box box-amber fill-amber" x="1365" y="502" width="455" height="118"/>
   <text class="box-title" x="1390" y="535">读取会话目录和 .meta.json</text>
@@ -133,10 +133,10 @@
 
   <!-- 2: restore context -->
   <rect class="box box-blue fill-blue" x="120" y="682" width="455" height="118"/>
-  <text class="box-title" x="145" y="715">/conversations restore &lt;session_id&gt;</text>
+  <text class="box-title" x="145" y="715">openclaw kmm conversations &lt;selector&gt;</text>
   <text class="box-text" x="145" y="742">用户选一个远端 session id；默认 tokenBudget=128000</text>
   <text class="code" x="145" y="766">restoreConversation(input, session)</text>
-  <text class="small" x="145" y="788">裸 id 也等价于 restore；resume/open/show 是别名</text>
+  <text class="small" x="145" y="788">selector 支持行号、resume/latest、完整 ID 或唯一前缀</text>
 
   <rect class="box box-green fill-green" x="735" y="682" width="455" height="118"/>
   <text class="box-title" x="760" y="715">先拿 assembled context</text>
@@ -211,5 +211,5 @@
   <!-- Result callout -->
   <rect x="70" y="1262" width="1780" height="40" rx="20" fill="#0f172a"/>
   <text class="tag" x="95" y="1287">讲解金句</text>
-  <text class="note-text-light" x="185" y="1287">/conversations restore 本质不是“远程打开会话”，而是“从 OpenViking 事实源拉全量 transcript，灌成本地 OpenClaw session；切过去后继续读写同一个 OV session”。</text>
+  <text class="note-text-light" x="185" y="1287">openclaw kmm conversations 本质不是“远程打开会话”，而是“从 OpenViking 事实源拉全量 transcript，灌成本地 OpenClaw session；切过去后继续读写同一个 OV session”。</text>
 </svg>

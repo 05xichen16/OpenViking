@@ -597,7 +597,7 @@ export function registerSetupCli(api: any): void {
 
   api.registerCli(
     ({ program }: RegisterCliArgs) => {
-      const ovCmd = program.command("openviking").description("OpenViking plugin commands");
+      const ovCmd = program.command("kmm").description("OpenViking plugin commands (kmm)");
 
       // Shell-side equivalent of the in-TUI /conversations command.
       registerOpenVikingConversationsCommand(ovCmd);
@@ -686,8 +686,8 @@ export function registerSetupCli(api: any): void {
                 ));
                 console.log(tr(
                   zh,
-                  "Run `openclaw openviking setup --reconfigure` to configure a remote OpenViking server.",
-                  "请运行 `openclaw openviking setup --reconfigure` 以配置远程 OpenViking 服务。",
+                  "Run `openclaw kmm setup --reconfigure` to configure a remote OpenViking server.",
+                  "请运行 `openclaw kmm setup --reconfigure` 以配置远程 OpenViking 服务。",
                 ));
                 console.log("");
                 return;
@@ -774,7 +774,7 @@ export function registerSetupCli(api: any): void {
           printStatus(zh, result);
         });
     },
-    { commands: ["openviking"] },
+    { commands: ["kmm"] },
   );
 }
 
@@ -1053,7 +1053,7 @@ function printStatus(zh: boolean, result: StatusResult): void {
 
   if (!result.configured) {
     console.log(`  ${tr(zh, "Status: Not configured", "状态: 未配置")}`);
-    console.log(`  ${tr(zh, "Run `openclaw openviking setup` to configure.", "运行 `openclaw openviking setup` 进行配置。")}`);
+    console.log(`  ${tr(zh, "Run `openclaw kmm setup` to configure.", "运行 `openclaw kmm setup` 进行配置。")}`);
     console.log("");
     return;
   }

@@ -84,6 +84,15 @@ export const CONVERSATION_ENRICH_ALL_MAX = 1000;
 /** Bounded concurrency for per-session metadata fetches. */
 const CONVERSATION_ENRICH_CONCURRENCY = 16;
 export const CONVERSATION_RESTORE_DEFAULT_TOKENS = 128_000;
+/**
+ * Per-row preview for the list view. getSessionContext is heavier than
+ * getSession, so only the SHOWN rows are enriched, with a small token budget and
+ * bounded concurrency. Best-effort: a failed preview just omits the description.
+ */
+export const CONVERSATION_PREVIEW_TOKENS = 1500;
+const CONVERSATION_PREVIEW_CONCURRENCY = 8;
+/** Max chars of the natural-language description shown per conversation. */
+export const CONVERSATION_DESCRIPTION_MAX_CHARS = 140;
 
 /** Run `fn` over `items` with at most `limit` in flight, preserving order. */
 async function mapWithConcurrency<T, R>(
@@ -108,7 +117,13 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-export type ConversationRow = { session_id: string; modTime: string; meta: SessionMetaResult | null };
+export type ConversationRow = {
+  session_id: string;
+  modTime: string;
+  meta: SessionMetaResult | null;
+  /** Short natural-language summary of the conversation (list view only). */
+  description?: string;
+};
 
 function formatConversationTimestamp(value: string): string {
   const raw = value.trim();
@@ -130,6 +145,39 @@ function conversationRowTime(row: ConversationRow): string {
   );
 }
 
+/** Join the text parts of an OV message into one collapsed, trimmed string. */
+function ovMessageText(message: OVMessage): string {
+  const parts = Array.isArray(message.parts) ? message.parts : [];
+  return parts
+    .filter((part) => (part as { type?: string }).type === "text")
+    .map((part) => String((part as { text?: unknown }).text ?? ""))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateForList(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+}
+
+/**
+ * A short natural-language description of a conversation for the list view.
+ * Prefers the server's archive overview (a real summary); otherwise falls back
+ * to the first user message text — mirroring OpenClaw's own session picker,
+ * which titles a session by its first user message. Empty when nothing fits.
+ */
+export function extractConversationDescription(ctx: SessionContextLite): string {
+  const overview = truncateForList(ctx.latest_archive_overview ?? "", CONVERSATION_DESCRIPTION_MAX_CHARS);
+  if (overview) {
+    return overview;
+  }
+  const messages = Array.isArray(ctx.messages) ? ctx.messages : [];
+  const firstUser = messages.find((message) => message.role === "user" && ovMessageText(message));
+  const source = firstUser ?? messages.find((message) => ovMessageText(message));
+  return source ? truncateForList(ovMessageText(source), CONVERSATION_DESCRIPTION_MAX_CHARS) : "";
+}
+
 export function formatConversationsList(
   rows: ConversationRow[],
   opts: { total: number; enrichTruncated: number },
@@ -139,13 +187,17 @@ export function formatConversationsList(
   }
   const idWidth = Math.max(10, ...rows.map((row) => row.session_id.length));
   const header = `${"#".padEnd(3)}  ${"session_id".padEnd(idWidth)}  ${"updated".padEnd(16)}  ${"msgs".padStart(5)}  agents`;
-  const lines = rows.map((row, index) => {
+  const lines = rows.flatMap((row, index) => {
     const meta = row.meta;
     const updated = formatConversationTimestamp(conversationRowTime(row));
     const msgs = meta?.total_message_count ?? meta?.message_count;
     const msgsStr = typeof msgs === "number" ? String(msgs) : "?";
     const agents = (meta?.participant_agent_ids ?? []).join(",") || "-";
-    return `${String(index + 1).padEnd(3)}  ${row.session_id.padEnd(idWidth)}  ${updated.padEnd(16)}  ${msgsStr.padStart(5)}  ${agents}`;
+    const head = `${String(index + 1).padEnd(3)}  ${row.session_id.padEnd(idWidth)}  ${updated.padEnd(16)}  ${msgsStr.padStart(5)}  ${agents}`;
+    // Second, indented line: a natural-language description of the conversation
+    // (server overview, else first user message) so the list is skimmable.
+    const desc = row.description?.trim();
+    return desc ? [head, `     ↳ ${desc}`] : [head];
   });
   const footer: string[] = [
     "",
@@ -223,13 +275,42 @@ export function createOpenVikingConversationsRuntime(
     return { rows, enrichTruncated };
   };
 
+  // Fetch a short description for each SHOWN row. getSessionContext is heavier
+  // than getSession, so this runs only on the sliced top-N — best-effort, with
+  // bounded concurrency and a small token budget — and never fails the list.
+  const enrichRowsWithDescription = async (
+    rows: ConversationRow[],
+    session: ConversationsSession,
+  ): Promise<ConversationRow[]> => {
+    if (rows.length === 0) {
+      return rows;
+    }
+    const client = await deps.getClient();
+    return mapWithConcurrency(rows, CONVERSATION_PREVIEW_CONCURRENCY, async (row) => {
+      try {
+        const ctx = await client.getSessionContext(
+          row.session_id,
+          CONVERSATION_PREVIEW_TOKENS,
+          session.agentId,
+        );
+        const description = extractConversationDescription(ctx);
+        return description ? { ...row, description } : row;
+      } catch (err) {
+        deps.logger?.warn?.(
+          `openviking: failed to fetch preview for ${row.session_id}: ${String(err)}`,
+        );
+        return row;
+      }
+    });
+  };
+
   const listConversations = async (
     input: ConversationsListInput,
     session: ConversationsSession,
   ): Promise<OpenVikingConversationsToolResult> => {
     const limit = Math.max(1, Math.floor(input.limit ?? CONVERSATION_LIST_DEFAULT_LIMIT));
     const { rows, enrichTruncated } = await computeConversationRows(session);
-    const top = rows.slice(0, limit);
+    const top = await enrichRowsWithDescription(rows.slice(0, limit), session);
 
     const text = formatConversationsList(top, { total: rows.length, enrichTruncated });
     return {
@@ -238,7 +319,12 @@ export function createOpenVikingConversationsRuntime(
         action: "list_conversations",
         total: rows.length,
         shown: top.length,
-        sessions: top.map((row) => ({ session_id: row.session_id, mod_time: row.modTime, ...(row.meta ?? {}) })),
+        sessions: top.map((row) => ({
+          session_id: row.session_id,
+          mod_time: row.modTime,
+          ...(row.meta ?? {}),
+          description: row.description ?? "",
+        })),
       },
     };
   };

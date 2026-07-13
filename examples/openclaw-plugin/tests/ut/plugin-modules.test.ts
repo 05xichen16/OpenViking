@@ -6,6 +6,7 @@ import {
 import { parseConversationsCommandArgs } from "../../plugin/openviking-command-args.js";
 import {
   createOpenVikingConversationsRuntime,
+  extractConversationDescription,
   CONVERSATION_ENRICH_CAP,
 } from "../../plugin/openviking-conversations-runtime.js";
 import { registerOpenVikingContextEngine } from "../../plugin/openviking-context-engine-registration.js";
@@ -211,7 +212,7 @@ describe("plugin module seams", () => {
     expect(() => parseConversationsCommandArgs("0")).toThrow(/1 or greater/);
   });
 
-  it("lists conversations enriched and newest-first through the conversations runtime", async () => {
+  it("lists conversations newest-first with a natural-language description per row", async () => {
     const listSessions = vi.fn().mockResolvedValue([
       { session_id: "s-old", uri: "viking://user/sessions/s-old", is_dir: true, mod_time: "2026-01-01T09:00:00" },
       { session_id: "s-new", uri: "viking://user/sessions/s-new", is_dir: true, mod_time: "2026-02-02T09:00:00" },
@@ -221,19 +222,63 @@ describe("plugin module seams", () => {
       message_count: sessionId === "s-new" ? 7 : 4,
       participant_agent_ids: ["worker"],
     }));
+    // s-new has a server overview; s-old has none so it falls back to the first
+    // user message text (mirrors OpenClaw's first-message session title).
+    const getSessionContext = vi.fn(async (sessionId: string) => ({
+      latest_archive_overview: sessionId === "s-new" ? "Debugged the restore flow." : "",
+      messages:
+        sessionId === "s-old"
+          ? [{ id: "m", role: "user", parts: [{ type: "text", text: "how do I configure the server?" }], created_at: "" }]
+          : [],
+      stats: {},
+    }));
     const runtime = createOpenVikingConversationsRuntime({
-      getClient: async () => ({ listSessions, getSession, getSessionContext: vi.fn() }),
+      getClient: async () => ({ listSessions, getSession, getSessionContext }),
       hydrateSession: vi.fn(),
     });
 
     const result = await runtime.runConversations({ action: "list" }, { agentId: "worker" });
 
     expect(listSessions).toHaveBeenCalledWith("worker");
+    // Descriptions are fetched only for the shown rows, with the preview budget.
+    expect(getSessionContext).toHaveBeenCalledWith("s-new", 1500, "worker");
     const text = result.content[0]!.text;
     // Newest first: s-new before s-old.
     expect(text.indexOf("s-new")).toBeLessThan(text.indexOf("s-old"));
     expect(text).toContain("worker");
+    // Overview preferred for s-new; first-user-message fallback for s-old.
+    expect(text).toContain("↳ Debugged the restore flow.");
+    expect(text).toContain("how do I configure the server?");
     expect(result.details?.shown).toBe(2);
+    const sessions = result.details?.sessions as Array<{ session_id: string; description: string }>;
+    expect(sessions.find((s) => s.session_id === "s-new")?.description).toBe("Debugged the restore flow.");
+  });
+
+  it("extractConversationDescription: overview wins, else first user message, else empty", () => {
+    // Server overview is preferred.
+    expect(
+      extractConversationDescription({
+        latest_archive_overview: "  A summary of the chat.  ",
+        messages: [{ id: "a", role: "assistant", parts: [{ type: "text", text: "hi" }], created_at: "" }],
+      }),
+    ).toBe("A summary of the chat.");
+    // No overview → first USER message text (not the assistant tail).
+    expect(
+      extractConversationDescription({
+        latest_archive_overview: "",
+        messages: [
+          { id: "a", role: "assistant", parts: [{ type: "text", text: "greeting" }], created_at: "" },
+          { id: "u", role: "user", parts: [{ type: "text", text: "help me deploy the plugin" }], created_at: "" },
+        ],
+      }),
+    ).toBe("help me deploy the plugin");
+    // Nothing usable → empty string (caller then omits the description line).
+    expect(extractConversationDescription({ latest_archive_overview: "", messages: [] })).toBe("");
+    // Long overview is truncated with an ellipsis.
+    const long = "x".repeat(300);
+    const out = extractConversationDescription({ latest_archive_overview: long, messages: [] });
+    expect(out.length).toBeLessThanOrEqual(140);
+    expect(out.endsWith("…")).toBe(true);
   });
 
   it("restore hydrates the full verbatim transcript and returns the native /session command", async () => {

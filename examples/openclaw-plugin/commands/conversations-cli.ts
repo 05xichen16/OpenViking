@@ -1,4 +1,4 @@
-// `openclaw openviking conversations` — a shell-side entry point that mirrors the
+// `openclaw kmm conversations` — a shell-side entry point that mirrors the
 // in-TUI /conversations command. It reuses the exact same argument grammar
 // (parseConversationsCommandArgs) and runtime (createOpenVikingConversationsRuntime)
 // as the slash command, so list / restore-by-number / resume / prefix behave
@@ -73,16 +73,16 @@ function extractOptions(cliArgs: unknown[]): Record<string, unknown> {
 }
 
 /**
- * Attach `conversations` under the plugin's `openclaw openviking` CLI command.
- * The caller passes the already-created `openviking` command so there is exactly
- * one `openviking` command with all subcommands hanging off it.
+ * Attach `conversations` under the plugin's `openclaw kmm` CLI command.
+ * The caller passes the already-created `kmm` command so there is exactly
+ * one `kmm` command with all subcommands hanging off it.
  */
 export function registerOpenVikingConversationsCommand(ovCmd: ConversationsCliCommand): void {
   ovCmd
     .command("conversations [selector...]")
     .description(
       "List past OpenViking conversations, or restore one into your local OpenClaw sessions. " +
-        "Examples: `openclaw openviking conversations`, `conversations 3`, `conversations resume`, `conversations <id-prefix>`.",
+        "Examples: `openclaw kmm conversations`, `conversations 3`, `conversations resume`, `conversations <id-prefix>`.",
     )
     .option("--limit <n>", "Max conversations to list")
     .option("--tokens <n>", "Token budget when restoring")

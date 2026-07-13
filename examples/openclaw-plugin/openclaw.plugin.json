@@ -32,12 +32,12 @@
     {
       "name": "setup",
       "kind": "runtime-slash",
-      "cliCommand": "openviking"
+      "cliCommand": "kmm"
     },
     {
       "name": "status",
       "kind": "runtime-slash",
-      "cliCommand": "openviking"
+      "cliCommand": "kmm"
     }
   ],
   "providerAuthEnvVars": {
@@ -74,7 +74,7 @@
       }
     ],
     "requiresRuntime": true,
-    "cliCommand": "openclaw openviking setup"
+    "cliCommand": "openclaw kmm setup"
   },
   "uiHints": {
     "baseUrl": {

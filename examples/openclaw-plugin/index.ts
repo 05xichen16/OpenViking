@@ -174,7 +174,7 @@ const contextEnginePlugin = {
     if (rawCfg.mode && rawCfg.mode !== "remote") {
       api.logger.warn(
         `openviking: legacy local mode detected (mode="${String(rawCfg.mode)}"). ` +
-          "Migrating to remote mode. Please run 'openclaw openviking setup' to configure the remote server.",
+          "Migrating to remote mode. Please run 'openclaw kmm setup' to configure the remote server.",
       );
       rawCfg.mode = "remote";
       delete rawCfg.localBinaryPath;
@@ -189,7 +189,7 @@ const contextEnginePlugin = {
     } catch (parseErr) {
       api.logger.warn(
         `openviking: config parse failed (${parseErr instanceof Error ? parseErr.message : String(parseErr)}). ` +
-          "Plugin loaded in setup-only mode. Run: openclaw openviking setup",
+          "Plugin loaded in setup-only mode. Run: openclaw kmm setup",
       );
       registerSetupCli(api);
       return;
