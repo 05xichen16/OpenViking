@@ -154,12 +154,37 @@ export function buildSessionStoreEntry(params: {
   model: string;
   modelProvider: string;
   label?: string;
+  channel?: string;
+  sessionStartedAt?: number;
 }): Record<string, unknown> {
+  // Write the SAME routing/lifecycle fields OpenClaw persists for its own local
+  // sessions, so a restored session is structurally indistinguishable from a
+  // native one. A minimal entry (id/file/model only) resumes on OpenClaw 2026.5.x
+  // but breaks on 2026.6.x: the newer runtime derives a session's delivery context
+  // ENTIRELY from these fields (dist delivery-context.shared `deliveryContextFromSession`
+  // reads route/channel/origin/lastChannel/deliveryContext), so without them it
+  // returns undefined and cannot reconstruct the session scene on resume.
+  //
+  // Default to the "webchat" surface with NO external target (to/accountId/threadId):
+  // this mirrors what OpenClaw writes for its own local webchat/TUI sessions, i.e.
+  // "render locally, do not deliver outbound", which is exactly what a resumed
+  // restore should do.
+  const channel = params.channel?.trim() || "webchat";
+  const startedAt = params.sessionStartedAt ?? params.updatedAt;
   return {
     sessionId: params.sessionId,
     updatedAt: params.updatedAt,
+    sessionStartedAt: startedAt,
+    lastInteractionAt: params.updatedAt,
+    systemSent: false,
     sessionFile: params.sessionFile,
     chatType: "direct",
+    route: { channel },
+    deliveryContext: { channel },
+    lastChannel: channel,
+    origin: { provider: channel, surface: channel, chatType: "direct" },
+    compactionCount: 0,
+    status: "done",
     model: params.model,
     modelProvider: params.modelProvider,
     ...(params.label ? { label: params.label, displayName: params.label } : {}),
