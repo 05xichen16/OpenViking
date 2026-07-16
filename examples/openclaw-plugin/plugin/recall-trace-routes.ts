@@ -38,10 +38,10 @@ export type RecallTraceRouteHandlers = {
 };
 
 export const RECALL_TRACE_ROUTE_PATHS = [
-  "/api/openviking/recall-traces",
-  "/api/openviking/uri-detail",
-  "/api/openviking/recall-traces/latest-ov-search-list",
-  "/api/openviking/recall-traces/:traceId",
+  "/api/kmm/recall-traces",
+  "/api/kmm/uri-detail",
+  "/api/kmm/recall-traces/latest-ov-search-list",
+  "/api/kmm/recall-traces/:traceId",
 ] as const;
 
 export function registerRecallTraceRoutes(
@@ -107,9 +107,9 @@ export function registerRecallTraceRoutes(
     };
     for (const route of routes) {
       if (route.path === RECALL_TRACE_ROUTE_PATHS[3]) {
-        const prefix = "/api/openviking/recall-traces/";
+        const prefix = "/api/kmm/recall-traces/";
         routeAdapter?.registerHttpRoute?.({
-          path: "/api/openviking/recall-traces",
+          path: "/api/kmm/recall-traces",
           auth: "plugin",
           match: "prefix",
           handler: makeHttpHandler(route, (url) => {

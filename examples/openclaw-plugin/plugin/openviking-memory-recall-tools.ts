@@ -117,9 +117,9 @@ export function registerOpenVikingMemoryRecallTools(
   deps.registerTool(
     (ctx: OpenVikingMemoryRecallToolContext) => ({
       name: "memory_recall",
-      label: "Memory Recall (OpenViking)",
+      label: "Memory Recall (KMM)",
       description:
-        "Search long-term memories from OpenViking. Use when you need past user preferences, facts, or decisions.",
+        "Search long-term memories from KMM. Use when you need past user preferences, facts, or decisions.",
       parameters: Type.Object({
         query: Type.String({ description: "Search query" }),
         limit: Type.Optional(
@@ -163,7 +163,7 @@ export function registerOpenVikingMemoryRecallTools(
         const recallClient = await deps.getClient();
         if (deps.cfg.logFindRequests) {
           deps.logger.info?.(
-            `openviking: memory_recall X-OpenViking-Actor-Peer="${session.agentId}" ` +
+            `kmm: memory_recall X-OpenViking-Actor-Peer="${session.agentId}" ` +
               `(plugin defaultAgentId="${recallClient.getDefaultAgentId()}" is unused when session context is present)`,
           );
         }
@@ -313,7 +313,7 @@ export function registerOpenVikingMemoryRecallTools(
         if (memories.length === 0) {
           await recordMemoryRecallTrace(new Set());
           return {
-            content: [{ type: "text", text: "No relevant OpenViking memories found." }],
+            content: [{ type: "text", text: "No relevant KMM memories found." }],
             details: { count: 0, total: result.total ?? 0, scoreThreshold },
           };
         }
@@ -331,7 +331,7 @@ export function registerOpenVikingMemoryRecallTools(
             content: [
               {
                 type: "text",
-                text: `No complete OpenViking memories fit recallMaxInjectedChars=${queryConfig.maxInjectedChars}.`,
+                text: `No complete KMM memories fit recallMaxInjectedChars=${queryConfig.maxInjectedChars}.`,
               },
             ],
             details: {

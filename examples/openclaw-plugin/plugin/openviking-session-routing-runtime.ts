@@ -44,7 +44,7 @@ export function createOpenVikingSessionRoutingRuntime(options: {
     const result = sessionAgentResolver.resolve(sid, sk, ovSid);
     if (options.logFindRequests) {
       options.logger.info(
-        `openviking: resolveAgentId ${JSON.stringify({
+        `kmm: resolveAgentId ${JSON.stringify({
           sessionId: sid || "(empty)",
           sessionKey: sk || "(empty)",
           ovSessionId: ovSid || "(empty)",

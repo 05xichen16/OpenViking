@@ -32,9 +32,9 @@ describe("setup IO seam", () => {
     fs.writeFileSync(configPath, JSON.stringify({
       plugins: {
         allow: ["other"],
-        installs: { openviking: { path: "/legacy" }, other: { path: "/other" } },
+        installs: { kmm: { path: "/legacy" }, other: { path: "/other" } },
         entries: {
-          openviking: { enabled: true, config: { mode: "local", port: 1933 } },
+          kmm: { enabled: true, config: { mode: "local", port: 1933 } },
         },
       },
     }, null, 2));
@@ -47,10 +47,10 @@ describe("setup IO seam", () => {
 
     const config = readOpenClawConfig(configPath);
     expect(config.plugins).toMatchObject({
-      allow: ["other", "openviking"],
+      allow: ["other", "kmm"],
       installs: { other: { path: "/other" } },
       entries: {
-        openviking: {
+        kmm: {
           enabled: true,
           config: {
             mode: "remote",
@@ -175,9 +175,9 @@ describe("setup service seam", () => {
     });
     expect(io.config).toMatchObject({
       plugins: {
-        allow: ["openviking"],
+        allow: ["kmm"],
         entries: {
-          openviking: {
+          kmm: {
             config: {
               mode: "remote",
               baseUrl: "http://127.0.0.1:1933",
@@ -187,7 +187,7 @@ describe("setup service seam", () => {
             },
           },
         },
-        slots: { contextEngine: "openviking" },
+        slots: { contextEngine: "kmm" },
       },
     });
   });
@@ -196,7 +196,7 @@ describe("setup service seam", () => {
     const io = createMemoryIO({
       plugins: {
         entries: {
-          openviking: {
+          kmm: {
             enabled: true,
             config: {
               mode: "local",
@@ -263,7 +263,7 @@ describe("setup service seam", () => {
     expect(io.config).toMatchObject({
       plugins: {
         entries: {
-          openviking: {
+          kmm: {
             enabled: true,
             config: {
               mode: "remote",
@@ -273,10 +273,10 @@ describe("setup service seam", () => {
             },
           },
         },
-        slots: { contextEngine: "openviking" },
+        slots: { contextEngine: "kmm" },
       },
     });
-    const saved = (((io.config.plugins as Record<string, unknown>).entries as Record<string, unknown>).openviking as Record<string, unknown>).config as Record<string, unknown>;
+    const saved = (((io.config.plugins as Record<string, unknown>).entries as Record<string, unknown>).kmm as Record<string, unknown>).config as Record<string, unknown>;
     expect(saved).not.toHaveProperty("port");
     expect(saved).not.toHaveProperty("configPath");
     expect(saved).not.toHaveProperty("apiKey");
@@ -288,7 +288,7 @@ describe("setup service seam", () => {
     const io = createMemoryIO({
       plugins: {
         entries: {
-          openviking: {
+          kmm: {
             config: {
               mode: "remote",
               baseUrl: "http://127.0.0.1:1933",
@@ -341,7 +341,7 @@ describe("setup service seam", () => {
       slot: { activated: true, replaced: false },
     });
     expect(io.config).toMatchObject({
-      plugins: { slots: { contextEngine: "openviking" } },
+      plugins: { slots: { contextEngine: "kmm" } },
     });
   });
 });

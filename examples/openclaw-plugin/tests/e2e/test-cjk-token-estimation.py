@@ -93,7 +93,7 @@ def iter_new_log_lines(path: pathlib.Path, offset: int) -> list[str]:
 
 
 def parse_diag(line: str) -> dict[str, Any] | None:
-    marker = "openviking: diag "
+    marker = "kmm: diag "
     pos = line.find(marker)
     if pos < 0:
         return None

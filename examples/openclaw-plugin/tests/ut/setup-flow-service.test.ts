@@ -97,8 +97,8 @@ describe("setup flow service", () => {
     });
     expect(io.config).toMatchObject({
       plugins: {
-        entries: { openviking: { config: result.config } },
-        slots: { contextEngine: "openviking" },
+        entries: { kmm: { config: result.config } },
+        slots: { contextEngine: "kmm" },
       },
     });
   });

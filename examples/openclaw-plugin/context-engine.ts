@@ -222,7 +222,7 @@ function prependRecallToLatestUserMessage(messages: AgentMessage[], recallBlock:
 
 function emitDiag(log: Logger, stage: string, sessionId: string, data: Record<string, unknown>, enabled = true): void {
   if (!enabled) return;
-  log.info(`openviking: diag ${JSON.stringify({ ts: Date.now(), stage, sessionId, data })}`);
+  log.info(`kmm: diag ${JSON.stringify({ ts: Date.now(), stage, sessionId, data })}`);
 }
 
 function validTokenBudget(raw: unknown): number | undefined {

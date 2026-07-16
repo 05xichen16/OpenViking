@@ -53,14 +53,14 @@ export function openClawSessionToOvStorageId(
     }
     return sid;
   }
-  throw new Error("openviking: need sessionId or sessionKey for OV session path");
+  throw new Error("kmm: need sessionId or sessionKey for OV session path");
 }
 
 /** Normalize a hook/tool session ref (uuid, sessionKey, or already-safe id) for OV storage. */
 export function openClawSessionRefToOvStorageId(ref: string): string {
   const t = ref.trim();
   if (!t) {
-    throw new Error("openviking: empty session ref");
+    throw new Error("kmm: empty session ref");
   }
   if (OPENVIKING_OV_SESSION_UUID.test(t)) {
     return t.toLowerCase();

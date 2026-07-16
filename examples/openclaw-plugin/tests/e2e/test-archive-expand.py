@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发新人）
+kmm_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发新人）
 
 ================================================================================
 一、用例设计思路
@@ -9,14 +9,14 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
 核心验证点:
   当对话累积到一定量后，早期内容会被压缩归档（archive），归档摘要只保留概要
   信息，精确的参数值（IP、端口、命令、hash 等）会在压缩中丢失。当用户追问这些
-  精确细节时，LLM 需要通过调用 ov_archive_expand 工具展开归档，从原始对话中
+  精确细节时，LLM 需要通过调用 kmm_archive_expand 工具展开归档，从原始对话中
   恢复精确数据，才能给出正确回答。
 
   本用例通过以下策略验证该能力:
     1. 注入大量包含精确参数的对话（pod 名、kubectl 命令、PR 编号、行号、
        benchmark 结果、commit hash、incident report 编号等）
     2. 4 批对话 × 8 轮 = 32 轮对话，迫使系统产生多个归档
-    3. 追问精确细节，验证 LLM 是否调用 ov_archive_expand 并返回精确数据
+    3. 追问精确细节，验证 LLM 是否调用 kmm_archive_expand 并返回精确数据
     4. 对比：概要级问题无需展开即可回答（验证展开的必要性）
 
 对话数据设计:
@@ -30,16 +30,16 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
     HPA 参数、Confluence 页面 ID
 
   这些数据包含大量"精确值"（数字、命令、ID），是摘要压缩时最容易丢失的信息，
-  也是 ov_archive_expand 最核心的价值场景。
+  也是 kmm_archive_expand 最核心的价值场景。
 
 验证查询设计:
-  - EXPAND_QUESTIONS (4题): 追问精确参数 — 预期触发 ov_archive_expand
+  - EXPAND_QUESTIONS (4题): 追问精确参数 — 预期触发 kmm_archive_expand
     每题设置 expected_keywords 和 target_archive，用关键词命中率 >= 50% 判定
   - NO_EXPAND_QUESTIONS (1题): 概要级问题 — 预期从摘要即可回答，无需展开
 
 断言策略:
   - 关键词命中率 >= 50% 即判定通过（允许 LLM 回复的表述差异）
-  - 通过 openclaw.log 中的 "ov_archive_expand invoked/expanded" 日志验证
+  - 通过 openclaw.log 中的 "kmm_archive_expand invoked/expanded" 日志验证
     工具是否真正被调用
 
 ================================================================================
@@ -51,7 +51,7 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
   Phase 2b:  第三段对话 (8 轮) — 代码评审讨论 → afterTurn + auto-commit
   Phase 2c:  第四段对话 (8 轮) — 架构设计讨论 → afterTurn + auto-commit
   Phase 3:   验证 Archive Index — 检查 commit_count、记忆数、归档数
-  Phase 4:   追问精确细节 (4 问) — 触发 ov_archive_expand，验证关键词命中
+  Phase 4:   追问精确细节 (4 问) — 触发 kmm_archive_expand，验证关键词命中
   Phase 5:   概要级问题 (1 问) — 验证无需展开即可回答
 
   可选: 在 Phase 4 前通过 --gateway-restart-cmd 重启 Gateway 清除工作记忆，
@@ -67,15 +67,15 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
   4. 有效的 Gateway auth token（通过 --token 传入或自动发现）
 
   关键 openclaw.json 配置:
-    - plugins.slots.contextEngine = "openviking"
-    - plugins.entries.openviking.enabled = true
-    - plugins.entries.openviking.config.autoCapture = true
-    - plugins.entries.openviking.config.commitTokenThresholdRatio = 0.02
+    - plugins.slots.contextEngine = "kmm"
+    - plugins.entries.kmm.enabled = true
+    - plugins.entries.kmm.config.autoCapture = true
+    - plugins.entries.kmm.config.commitTokenThresholdRatio = 0.02
       ↑ 此值控制 auto-commit 时机，按模型上下文窗口的比例计算（0.02 = 2%）。
         32 轮对话需要多次 auto-commit 产生归档，比例越小归档越多；
         设为 0 表示每轮都 commit。
-    - agents.defaults.alsoAllow = ["ov_archive_expand"]
-      ↑ 必须显式允许 ov_archive_expand 工具，否则 LLM 无法调用
+    - agents.defaults.alsoAllow = ["kmm_archive_expand"]
+      ↑ 必须显式允许 kmm_archive_expand 工具，否则 LLM 无法调用
 
   服务部署参考:
     - OpenViking: openviking-server（HTTP 默认 2934，AGFS 默认 2833）
@@ -106,7 +106,7 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
     --delay <seconds>    轮次间等待秒数（默认 3s）
     --verbose / -v       详细输出（显示完整 JSON 响应）
     --gateway-restart-cmd <cmd>  Phase 4 前重启 Gateway 的命令
-    --log-path <path>    Gateway 日志路径，测试后自动扫描 ov_archive_expand 调用记录
+    --log-path <path>    Gateway 日志路径，测试后自动扫描 kmm_archive_expand 调用记录
 
   注意:
     - 完整测试约需 10-15 分钟（32 轮对话 + 验证 + 追问）
@@ -116,7 +116,7 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
 五、验证工具调用（日志检查）
 ================================================================================
 
-  本脚本通过关键词命中率间接验证 ov_archive_expand 是否生效。如需直接确认
+  本脚本通过关键词命中率间接验证 kmm_archive_expand 是否生效。如需直接确认
   工具是否被调用，可通过以下方式检查 Gateway 日志:
 
   方式 1 — 自动检查（推荐）:
@@ -127,18 +127,18 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
 
   方式 2 — 手动检查:
     # Linux / macOS
-    grep "ov_archive_expand" config/.openclaw/logs/openclaw.log
+    grep "kmm_archive_expand" config/.openclaw/logs/openclaw.log
 
     # Windows PowerShell
     Select-String -Path "config\\.openclaw\\logs\\openclaw.log" \\
-        -Pattern "ov_archive_expand"
+        -Pattern "kmm_archive_expand"
 
   预期日志（每次展开会产生一对 invoked + expanded 日志）:
 
-    openviking: ov_archive_expand invoked (archiveId=archive_001, sessionId=...)
-    openviking: ov_archive_expand expanded archive_001, messages=17, chars=82675, ...
+    kmm: kmm_archive_expand invoked (archiveId=archive_001, sessionId=...)
+    kmm: kmm_archive_expand expanded archive_001, messages=17, chars=82675, ...
 
-  如果 Phase 4 通过但日志中没有 ov_archive_expand 记录，说明 LLM 可能是
+  如果 Phase 4 通过但日志中没有 kmm_archive_expand 记录，说明 LLM 可能是
   从工作记忆（而非归档展开）中获取的信息。此时可通过 --gateway-restart-cmd
   在 Phase 4 前重启 Gateway 清除工作记忆，强制走归档展开路径。
 
@@ -146,7 +146,7 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
 六、已知限制
 ================================================================================
 
-  1. LLM 是否调用 ov_archive_expand:
+  1. LLM 是否调用 kmm_archive_expand:
      不同模型对工具调用的倾向性不同。如果模型直接从 archive overview 摘要
      中推测答案而不展开归档，关键词可能命中（摘要恰好包含）也可能不命中。
      使用 --gateway-restart-cmd 可强制清除工作记忆，迫使走归档展开路径。
@@ -165,7 +165,7 @@ ov_archive_expand 归档展开端到端测试 — 用户: 小杰（后端开发�
      编号依赖前序批次。不能单独跑 chat2 而跳过 chat1。
 
   5. 环境要求:
-     Gateway 必须配置 OpenViking 插件且启用 ov_archive_expand 工具定义，
+     Gateway 必须配置 OpenViking 插件且启用 kmm_archive_expand 工具定义，
      否则 LLM 无法调用归档展开。
 
 ================================================================================
@@ -614,7 +614,7 @@ def run_phase_verify_index(openviking_url: str, verbose: bool) -> str:
     return session_id or ""
 
 
-# ── Phase 4: 追问精确细节 — 触发 ov_archive_expand ──────────────────────
+# ── Phase 4: 追问精确细节 — 触发 kmm_archive_expand ──────────────────────
 
 
 def run_phase_expand(
@@ -625,12 +625,12 @@ def run_phase_expand(
 ) -> list:
     console.print()
     console.rule(
-        f"[bold]Phase 4: 追问精确细节 — 触发 ov_archive_expand ({len(EXPAND_QUESTIONS)} 轮)[/bold]",
+        f"[bold]Phase 4: 追问精确细节 — 触发 kmm_archive_expand ({len(EXPAND_QUESTIONS)} 轮)[/bold]",
     )
     console.print()
     console.print("[dim]验证点:[/dim]")
     console.print("[dim]- 追问归档中的精确参数值[/dim]")
-    console.print("[dim]- LLM 应通过 ov_archive_expand 展开归档[/dim]")
+    console.print("[dim]- LLM 应通过 kmm_archive_expand 展开归档[/dim]")
     console.print("[dim]- 回复包含原始对话中的精确数据（非泛化摘要）[/dim]")
     console.print()
 
@@ -773,7 +773,7 @@ def run_full_test(
     console.print()
     console.print(
         Panel.fit(
-            f"[bold]ov_archive_expand 归档展开测试 — {DISPLAY_NAME}[/bold]\n\n"
+            f"[bold]kmm_archive_expand 归档展开测试 — {DISPLAY_NAME}[/bold]\n\n"
             f"Gateway: {gateway_url}\n"
             f"OpenViking: {openviking_url}\n"
             f"User ID: {user_id}\n"
@@ -911,16 +911,16 @@ def run_full_test(
     console.print(tree)
 
     if failed == 0:
-        console.print("\n[green bold]全部通过! ov_archive_expand 归档展开验证成功。[/green bold]")
+        console.print("\n[green bold]全部通过! kmm_archive_expand 归档展开验证成功。[/green bold]")
     else:
         console.print(f"\n[red bold]有 {failed} 个断言失败。[/red bold]")
 
 
-# ── 日志扫描: 验证 ov_archive_expand 工具调用 ────────────────────────────
+# ── 日志扫描: 验证 kmm_archive_expand 工具调用 ────────────────────────────
 
 
 def scan_expand_log(log_path: str):
-    """扫描 Gateway 日志，提取 ov_archive_expand 调用记录。"""
+    """扫描 Gateway 日志，提取 kmm_archive_expand 调用记录。"""
     import pathlib
 
     p = pathlib.Path(log_path)
@@ -930,7 +930,7 @@ def scan_expand_log(log_path: str):
         return
 
     console.print()
-    console.rule("[bold]ov_archive_expand 工具调用日志验证[/bold]")
+    console.rule("[bold]kmm_archive_expand 工具调用日志验证[/bold]")
     console.print(f"[dim]日志文件: {log_path}[/dim]")
     console.print()
 
@@ -940,23 +940,23 @@ def scan_expand_log(log_path: str):
     try:
         with open(p, encoding="utf-8", errors="replace") as f:
             for line in f:
-                if "ov_archive_expand invoked" in line:
+                if "kmm_archive_expand invoked" in line:
                     invoked_lines.append(line.strip())
-                elif "ov_archive_expand expanded" in line:
+                elif "kmm_archive_expand expanded" in line:
                     expanded_lines.append(line.strip())
     except Exception as e:
         console.print(f"[red]读取日志失败: {e}[/red]")
         return
 
     if not invoked_lines and not expanded_lines:
-        console.print("[red]未找到 ov_archive_expand 调用记录！[/red]")
+        console.print("[red]未找到 kmm_archive_expand 调用记录！[/red]")
         console.print(
             "[dim]可能原因: LLM 从工作记忆（而非归档展开）获取了信息。"
             "尝试使用 --gateway-restart-cmd 在 Phase 4 前重启 Gateway。[/dim]",
         )
         return
 
-    log_table = Table(title="ov_archive_expand 调用记录", show_lines=True)
+    log_table = Table(title="kmm_archive_expand 调用记录", show_lines=True)
     log_table.add_column("#", style="bold", width=4)
     log_table.add_column("操作", width=10)
     log_table.add_column("归档 ID", style="cyan", width=14)
@@ -1003,7 +1003,7 @@ def scan_expand_log(log_path: str):
         console.print(f"  {aid}: {cnt} 次调用")
 
     check(
-        "日志中存在 ov_archive_expand 调用记录",
+        "日志中存在 kmm_archive_expand 调用记录",
         len(invoked_lines) > 0,
         f"invoked={len(invoked_lines)}, expanded={len(expanded_lines)}",
     )
@@ -1014,7 +1014,7 @@ def scan_expand_log(log_path: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description=f"ov_archive_expand 归档展开测试 — {DISPLAY_NAME}",
+        description=f"kmm_archive_expand 归档展开测试 — {DISPLAY_NAME}",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -1044,7 +1044,7 @@ def main():
     parser.add_argument(
         "--log-path",
         default="",
-        help="Gateway 日志路径 (如 config/.openclaw/logs/openclaw.log)，测试后自动扫描 ov_archive_expand 调用",
+        help="Gateway 日志路径 (如 config/.openclaw/logs/openclaw.log)，测试后自动扫描 kmm_archive_expand 调用",
     )
     args = parser.parse_args()
 
@@ -1055,7 +1055,7 @@ def main():
     token = args.token or discover_gateway_token()
     set_gateway_token(token)
 
-    console.print(f"[bold]ov_archive_expand 归档展开测试 — {DISPLAY_NAME}[/bold]")
+    console.print(f"[bold]kmm_archive_expand 归档展开测试 — {DISPLAY_NAME}[/bold]")
     console.print(f"[yellow]Gateway:[/yellow] {gateway_url}")
     console.print(f"[yellow]OpenViking:[/yellow] {openviking_url}")
     console.print(f"[yellow]User ID:[/yellow] {user_id}")

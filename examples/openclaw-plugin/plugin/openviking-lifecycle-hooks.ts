@@ -39,7 +39,7 @@ export function registerOpenVikingLifecycleHooks(deps: OpenVikingLifecycleHooksD
   deps.api.on("before_reset", async (_event: unknown, ctx?: OpenVikingHookContext) => {
     if (deps.isBypassedSession(ctx)) {
       deps.verboseRoutingInfo(
-        `openviking: bypassing before_reset due to session pattern match (sessionKey=${ctx?.sessionKey ?? "none"}, sessionId=${ctx?.sessionId ?? "none"})`,
+        `kmm: bypassing before_reset due to session pattern match (sessionKey=${ctx?.sessionKey ?? "none"}, sessionId=${ctx?.sessionId ?? "none"})`,
       );
       return;
     }
@@ -52,10 +52,10 @@ export function registerOpenVikingLifecycleHooks(deps: OpenVikingLifecycleHooksD
           sessionKey: ctx?.sessionKey,
         });
         if (ok) {
-          deps.logger.info(`openviking: committed OV session on reset for session=${sessionId}`);
+          deps.logger.info(`kmm: committed OV session on reset for session=${sessionId}`);
         }
       } catch (err) {
-        deps.logger.warn(`openviking: failed to commit OV session on reset: ${String(err)}`);
+        deps.logger.warn(`kmm: failed to commit OV session on reset: ${String(err)}`);
       }
     }
   });

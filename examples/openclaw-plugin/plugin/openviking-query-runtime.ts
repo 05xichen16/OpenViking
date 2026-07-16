@@ -139,16 +139,16 @@ function formatOVSearchRows(result: FindResult): string[] {
 function formatOVSearchText(query: string, uri: string | undefined, result: FindResult): string {
   if ((result.total ?? 0) <= 0) {
     const scope = uri ? ` under ${uri}` : "";
-    return `No OpenViking resource or skill results found for "${query}"${scope}.`;
+    return `No KMM resource or skill results found for "${query}"${scope}.`;
   }
   const scope = uri ? ` under ${uri}` : "";
   const lines = [
-    `Found ${result.total ?? 0} OpenViking results for "${query}"${scope}`,
-    "Tip: search results are ranked snippets. Use ov_read on exact hit URIs before answering precise questions. Use ov_list on a hit's parent URI to inspect sibling chunks or overview files before answering procedural or multi-step questions.",
+    `Found ${result.total ?? 0} KMM results for "${query}"${scope}`,
+    "Tip: search results are ranked snippets. Use kmm_read on exact hit URIs before answering precise questions. Use kmm_list on a hit's parent URI to inspect sibling chunks or overview files before answering procedural or multi-step questions.",
     "",
     ...formatOVSearchRows(result),
     "",
-    "Note: result URIs are OpenViking virtual URIs, not local file paths. Use the ov_read tool with the exact viking:// URI to read full content; do not use filesystem read tools for these URIs.",
+    "Note: result URIs are KMM virtual URIs, not local file paths. Use the kmm_read tool with the exact viking:// URI to read full content; do not use filesystem read tools for these URIs.",
   ].filter((line, index, all) => line || (all[index - 1] && all[index + 1]));
   return lines.join("\n");
 }
@@ -158,11 +158,11 @@ function validateOpenVikingUri(toolName: string, uri: string): void {
     throw new Error("uri is required");
   }
   if (!uri.startsWith("viking://")) {
-    throw new Error(`${toolName} only accepts OpenViking viking:// URIs, not local file paths or openviking:// display aliases`);
+    throw new Error(`${toolName} only accepts KMM viking:// URIs, not local file paths or kmm:// display aliases`);
   }
   if (uri.endsWith("...") || uri.includes("…")) {
     throw new Error(
-      `${toolName} received a truncated display URI. Use the exact full viking:// URI from ov_search details/results; do not shorten it with ... or ….`,
+      `${toolName} received a truncated display URI. Use the exact full viking:// URI from kmm_search details/results; do not shorten it with ... or ….`,
     );
   }
 }
@@ -191,27 +191,27 @@ function formatOVListEntry(entry: unknown): string {
 
 function formatOVListText(uri: string, entries: FsListResult): string {
   if (entries.length === 0) {
-    return `No OpenViking entries found under ${uri}.`;
+    return `No KMM entries found under ${uri}.`;
   }
   return [
-    `Listed ${entries.length} OpenViking entr${entries.length === 1 ? "y" : "ies"} under ${uri}`,
+    `Listed ${entries.length} KMM entr${entries.length === 1 ? "y" : "ies"} under ${uri}`,
     "",
     ...entries.map((entry) => formatOVListEntry(entry)),
   ].join("\n");
 }
 
 function formatOVReadText(uri: string, content: string): string {
-  const body = content || "(empty OpenViking content)";
+  const body = content || "(empty KMM content)";
   return [`--- START OF ${uri} ---`, body, `--- END OF ${uri} ---`].join("\n");
 }
 
 function formatOVMultiReadText(results: Array<{ uri: string; content: string; success: boolean }>): string {
   return [
-    `Multi-read results for ${results.length} OpenViking resource${results.length === 1 ? "" : "s"}:`,
+    `Multi-read results for ${results.length} KMM resource${results.length === 1 ? "" : "s"}:`,
     "",
     ...results.flatMap((result) => [
       `--- START OF ${result.uri} ---`,
-      result.success ? (result.content || "(empty OpenViking content)") : `ERROR: ${result.content}`,
+      result.success ? (result.content || "(empty KMM content)") : `ERROR: ${result.content}`,
       `--- END OF ${result.uri} ---`,
       "",
     ]),
@@ -239,7 +239,7 @@ export function createOpenVikingQueryRuntime<TQueryConfigContext>(deps: OpenViki
 
   const readOpenVikingContent = async (input: OpenVikingReadInput, agentId?: string) => {
     const uri = input.uri.trim();
-    validateOpenVikingUri("ov_read", uri);
+    validateOpenVikingUri("kmm_read", uri);
     const client = await deps.getClient();
     const content = await client.read(uri, agentId);
     const text = typeof content === "string" ? content : JSON.stringify(content, null, 2);
@@ -261,7 +261,7 @@ export function createOpenVikingQueryRuntime<TQueryConfigContext>(deps: OpenViki
       throw new Error("uris is required");
     }
     for (const uri of uris) {
-      validateOpenVikingUri("ov_multi_read", uri);
+      validateOpenVikingUri("kmm_multi_read", uri);
     }
     const client = await deps.getClient();
     const results = await Promise.all(
@@ -298,7 +298,7 @@ export function createOpenVikingQueryRuntime<TQueryConfigContext>(deps: OpenViki
 
   const listOpenVikingDirectory = async (input: OpenVikingListInput, agentId?: string) => {
     const uri = input.uri.trim();
-    validateOpenVikingUri("ov_list", uri);
+    validateOpenVikingUri("kmm_list", uri);
     const limit = Math.max(1, Math.floor(input.limit ?? 100));
     const client = await deps.getClient();
     const entries = await client.list(uri, {
@@ -405,10 +405,10 @@ export function createOpenVikingQueryRuntime<TQueryConfigContext>(deps: OpenViki
         throw firstError instanceof Error ? firstError : new Error(String(firstError));
       }
       if (resourcesSettled.status === "rejected") {
-        deps.logger.warn?.(`openviking: resource search failed: ${String(resourcesSettled.reason)}`);
+        deps.logger.warn?.(`kmm: resource search failed: ${String(resourcesSettled.reason)}`);
       }
       if (skillsSettled.status === "rejected") {
-        deps.logger.warn?.(`openviking: skill search failed: ${String(skillsSettled.reason)}`);
+        deps.logger.warn?.(`kmm: skill search failed: ${String(skillsSettled.reason)}`);
       }
       result = mergeFindResults(successful);
     }

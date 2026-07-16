@@ -118,10 +118,10 @@ export function registerOpenVikingToolResultTools({
 }: OpenVikingToolResultToolsDeps): void {
   registerTool(
     (ctx: OpenVikingToolResultToolContext): OpenVikingToolResultToolDefinition => ({
-      name: "openviking_tool_result_read",
-      label: "Tool Result Read (OpenViking)",
+      name: "kmm_tool_result_read",
+      label: "Tool Result Read (KMM)",
       description:
-        "Restore the full original content of a tool result that was externalized by OpenViking. " +
+        "Restore the full original content of a tool result that was externalized by KMM. " +
         "Use when a previous tool result was externalized and only a preview is visible — " +
         "the preview contains a [tool-result-ref] or viking://session/.../tool-results/... URI. " +
         "\"Read\" tool returns the same truncated preview; this tool returns the complete content. " +
@@ -137,7 +137,7 @@ export function registerOpenVikingToolResultTools({
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (isBypassedSession(ctx)) {
-          return makeBypassedToolResult("openviking_tool_result_read");
+          return makeBypassedToolResult("kmm_tool_result_read");
         }
         const session = resolvePluginSessionRouting(ctx);
         if (!session.ovSessionId) {
@@ -202,7 +202,7 @@ export function registerOpenVikingToolResultTools({
           };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          logger?.warn?.(`openviking: openviking_tool_result_read failed: ${msg}`);
+          logger?.warn?.(`kmm: kmm_tool_result_read failed: ${msg}`);
           return {
             content: [{ type: "text", text: `Failed to read tool result: ${msg}` }],
             details: { error: msg, tool_output_ref: parsed.ref },
@@ -210,17 +210,17 @@ export function registerOpenVikingToolResultTools({
         }
       },
     }),
-    { name: "openviking_tool_result_read" },
+    { name: "kmm_tool_result_read" },
   );
 
   registerTool(
     (ctx: OpenVikingToolResultToolContext): OpenVikingToolResultToolDefinition => ({
-      name: "openviking_tool_result_search",
-      label: "Tool Result Search (OpenViking)",
+      name: "kmm_tool_result_search",
+      label: "Tool Result Search (KMM)",
       description:
         "Search inside an externalized tool result for a keyword. " +
         "Use when you need to find specific content in a large externalized result, " +
-        "before reading it with openviking_tool_result_read. " +
+        "before reading it with kmm_tool_result_read. " +
         "Returns matching snippets with their character offsets.",
       parameters: Type.Object({
         tool_output_ref: Type.String({
@@ -233,7 +233,7 @@ export function registerOpenVikingToolResultTools({
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (isBypassedSession(ctx)) {
-          return makeBypassedToolResult("openviking_tool_result_search");
+          return makeBypassedToolResult("kmm_tool_result_search");
         }
         const session = resolvePluginSessionRouting(ctx);
         if (!session.ovSessionId) {
@@ -306,7 +306,7 @@ export function registerOpenVikingToolResultTools({
           };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          logger?.warn?.(`openviking: openviking_tool_result_search failed: ${msg}`);
+          logger?.warn?.(`kmm: kmm_tool_result_search failed: ${msg}`);
           return {
             content: [{ type: "text", text: `Failed to search tool result: ${msg}` }],
             details: { error: msg, tool_output_ref: parsed.ref, query },
@@ -314,16 +314,16 @@ export function registerOpenVikingToolResultTools({
         }
       },
     }),
-    { name: "openviking_tool_result_search" },
+    { name: "kmm_tool_result_search" },
   );
 
   registerTool(
     (ctx: OpenVikingToolResultToolContext): OpenVikingToolResultToolDefinition => ({
-      name: "openviking_tool_result_list",
-      label: "Tool Result List (OpenViking)",
+      name: "kmm_tool_result_list",
+      label: "Tool Result List (KMM)",
       description:
         "List externalized tool results for the current session. " +
-        "Use to discover available refs before calling openviking_tool_result_read. " +
+        "Use to discover available refs before calling kmm_tool_result_read. " +
         "Optionally filter by tool_name to narrow down results.",
       parameters: Type.Object({
         tool_name: Type.Optional(Type.String({ description: "Optional exact tool name filter" })),
@@ -331,7 +331,7 @@ export function registerOpenVikingToolResultTools({
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (isBypassedSession(ctx)) {
-          return makeBypassedToolResult("openviking_tool_result_list");
+          return makeBypassedToolResult("kmm_tool_result_list");
         }
         const session = resolvePluginSessionRouting(ctx);
         if (!session.ovSessionId) {
@@ -384,7 +384,7 @@ export function registerOpenVikingToolResultTools({
           };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          logger?.warn?.(`openviking: openviking_tool_result_list failed: ${msg}`);
+          logger?.warn?.(`kmm: kmm_tool_result_list failed: ${msg}`);
           return {
             content: [{ type: "text", text: `Failed to list tool results: ${msg}` }],
             details: { error: msg, session_id: session.ovSessionId, tool_name: toolName ?? null },
@@ -392,6 +392,6 @@ export function registerOpenVikingToolResultTools({
         }
       },
     }),
-    { name: "openviking_tool_result_list" },
+    { name: "kmm_tool_result_list" },
   );
 }

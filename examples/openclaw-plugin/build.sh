@@ -10,9 +10,9 @@ cd "$ROOT_DIR"
 PACKAGE_VERSION=$(npm pkg get version | tr -d '"')
 VERSION="${BUILD_VERSION:-$PACKAGE_VERSION}"
 RELEASE_PATH="${BUILD_RELEASE_PATH:-latest}"
-PACKAGE_NAME="openviking"
+PACKAGE_NAME="kmm"
 OUTPUT_DIR="$ROOT_DIR/output"
-TGZ_RELATIVE_PATH="output/openviking.tgz"
+TGZ_RELATIVE_PATH="output/kmm.tgz"
 INSTALL_RELATIVE_PATH="output/install.sh"
 VOLCENGINE_INSTALL_RELATIVE_PATH="output/volcengine-install.sh"
 TGZ_PATH="$ROOT_DIR/$TGZ_RELATIVE_PATH"
@@ -45,7 +45,7 @@ cleanup() {
 trap cleanup EXIT
 
 info() {
-  echo "[openviking] $*"
+  echo "[kmm] $*"
 }
 
 require_file() {
@@ -74,7 +74,7 @@ copy_optional_file() {
   fi
 }
 
-info "Building OpenViking plugin package $VERSION"
+info "Building KMM plugin package $VERSION"
 rm -rf dist "$OUTPUT_DIR"
 
 info "Installing dependencies"

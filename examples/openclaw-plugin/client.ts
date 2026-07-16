@@ -350,7 +350,7 @@ export class OpenVikingClient {
     const tenantHeaders = this.resolveTenantHeaders();
     const actorPeerHeader = this.resolveActorPeerHeader(actorPeerId);
     this.routingDebugLog(
-      `openviking: ${label} ` +
+      `kmm: ${label} ` +
         JSON.stringify({
           ...detail,
           X_OpenViking_Account: tenantHeaders.accountId ?? null,
@@ -411,7 +411,7 @@ export class OpenVikingClient {
       if (!response.ok || payload.status === "error") {
         const code = payload.error?.code ? ` [${payload.error.code}]` : "";
         const message = payload.error?.message ?? `HTTP ${response.status}`;
-        throw new Error(`OpenViking request failed${code}: ${message}`);
+        throw new Error(`KMM request failed${code}: ${message}`);
       }
 
       return (payload.result ?? payload) as T;
@@ -489,7 +489,7 @@ export class OpenVikingClient {
     const actorPeerId = this.resolveActorPeerHeader(options.actorPeerId ?? legacyActorPeerId);
     const tenantHeaders = this.resolveTenantHeaders();
     this.routingDebugLog?.(
-      `openviking: find POST ${this.baseUrl}/api/v1/search/find ` +
+      `kmm: find POST ${this.baseUrl}/api/v1/search/find ` +
         JSON.stringify({
           X_OpenViking_Account: tenantHeaders.accountId ?? null,
           X_OpenViking_User: tenantHeaders.userId ?? null,
@@ -608,7 +608,7 @@ export class OpenVikingClient {
       actorPeerId,
     );
     if (!result.temp_file_id) {
-      throw new Error("OpenViking temp upload did not return temp_file_id");
+      throw new Error("KMM temp upload did not return temp_file_id");
     }
     return result.temp_file_id;
   }

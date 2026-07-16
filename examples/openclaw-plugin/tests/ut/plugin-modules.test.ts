@@ -40,24 +40,24 @@ describe("plugin module seams", () => {
     const logger = { debug: vi.fn() };
     const registrar = createOpenVikingToolRegistrar({
       api,
-      enabledToolNames: new Set(["ov_search"]),
+      enabledToolNames: new Set(["kmm_search"]),
       logger,
     });
-    const toolFactory = () => ({ name: "ov_search" });
+    const toolFactory = () => ({ name: "kmm_search" });
     const disabledFactory = () => ({ name: "memory_store" });
 
-    registrar(toolFactory, { name: "ov_search" });
+    registrar(toolFactory, { name: "kmm_search" });
     registrar(disabledFactory, { name: "memory_store" });
 
     expect(api.registerTool).toHaveBeenCalledTimes(1);
-    expect(api.registerTool).toHaveBeenCalledWith(toolFactory, { name: "ov_search" });
-    expect(logger.debug).toHaveBeenCalledWith("openviking: tool memory_store disabled by config");
+    expect(api.registerTool).toHaveBeenCalledWith(toolFactory, { name: "kmm_search" });
+    expect(logger.debug).toHaveBeenCalledWith("kmm: tool memory_store disabled by config");
   });
 
   it("registers command definitions without changing names or handlers", async () => {
     const command = {
-      name: "ov-search",
-      description: "Search OpenViking resources and skills.",
+      name: "kmm-search",
+      description: "Search KMM resources and skills.",
       acceptsArgs: true,
       handler: vi.fn().mockResolvedValue({ text: "ok" }),
     };
@@ -113,9 +113,9 @@ describe("plugin module seams", () => {
     expect(commands.map((command) => command.name)).toEqual([
       "add-resource",
       "add-skill",
-      "ov-search",
-      "ov-query-config",
-      "ov-recall-trace",
+      "kmm-search",
+      "kmm-query-config",
+      "kmm-recall-trace",
       "conversations",
     ]);
 
@@ -457,10 +457,10 @@ describe("plugin module seams", () => {
 
   it("keeps recall trace route paths stable across legacy and HTTP adapters", () => {
     expect(RECALL_TRACE_ROUTE_PATHS).toEqual([
-      "/api/openviking/recall-traces",
-      "/api/openviking/uri-detail",
-      "/api/openviking/recall-traces/latest-ov-search-list",
-      "/api/openviking/recall-traces/:traceId",
+      "/api/kmm/recall-traces",
+      "/api/kmm/uri-detail",
+      "/api/kmm/recall-traces/latest-ov-search-list",
+      "/api/kmm/recall-traces/:traceId",
     ]);
 
     const adapter = {
@@ -478,10 +478,10 @@ describe("plugin module seams", () => {
     expect(registered).toBe(true);
     expect(adapter.registerRoute.mock.calls.map(([route]) => route.path)).toEqual(RECALL_TRACE_ROUTE_PATHS);
     expect(adapter.registerHttpRoute.mock.calls.map(([route]) => route.path)).toEqual([
-      "/api/openviking/recall-traces",
-      "/api/openviking/uri-detail",
-      "/api/openviking/recall-traces/latest-ov-search-list",
-      "/api/openviking/recall-traces",
+      "/api/kmm/recall-traces",
+      "/api/kmm/uri-detail",
+      "/api/kmm/recall-traces/latest-ov-search-list",
+      "/api/kmm/recall-traces",
     ]);
   });
 
@@ -596,7 +596,7 @@ describe("plugin module seams", () => {
 
     const search = await runtime.searchOpenViking({ query: "spec" }, "agent-main", { agentId: "agent-main", sessionId: "session-1" }) as any;
     expect(find.mock.calls.map(([, options]) => options.targetUri)).toEqual(["viking://resources", "viking://user/skills"]);
-    expect(search.content[0].text).toContain("Found 2 OpenViking results for \"spec\"");
+    expect(search.content[0].text).toContain("Found 2 KMM results for \"spec\"");
     expect(search.details).toMatchObject({ action: "searched", total: 2 });
     expect(recordAndFlush).toHaveBeenCalledWith(expect.objectContaining({
       traceId: "trace-query-1",
@@ -634,20 +634,20 @@ describe("plugin module seams", () => {
     });
 
     await expect(handler({ args: "set --ovSearchLimit 3 --scope session" })).resolves.toMatchObject({
-      text: "Updated OpenViking query config (session). Warnings: normalized",
+      text: "Updated KMM query config (session). Warnings: normalized",
       details: { scope: "session", params: { ovSearchLimit: 3 }, warnings: ["normalized"], effective },
     });
     expect(normalizeRuntimeQueryParams).toHaveBeenCalledWith({ ovSearchLimit: 3 });
     expect(queryConfigStore.set).toHaveBeenCalledWith("session", queryCtx, { ovSearchLimit: 3 });
 
     await expect(handler({ args: "unset ovSearchLimit targetUri --scope claw" })).resolves.toMatchObject({
-      text: "Unset OpenViking query config fields (claw): ovSearchLimit, targetUri",
+      text: "Unset KMM query config fields (claw): ovSearchLimit, targetUri",
       details: { scope: "claw", fields: ["ovSearchLimit", "targetUri"], effective },
     });
     expect(queryConfigStore.unset).toHaveBeenCalledWith("claw", queryCtx, ["ovSearchLimit", "targetUri"]);
 
     await expect(handler({ args: "reset" })).resolves.toMatchObject({
-      text: "Reset OpenViking query config (session).",
+      text: "Reset KMM query config (session).",
       details: { scope: "session", effective },
     });
     expect(queryConfigStore.reset).toHaveBeenCalledWith("session", queryCtx);
@@ -677,7 +677,7 @@ describe("plugin module seams", () => {
       wait: true,
       timeout: 30,
     }, "agent-main")).resolves.toEqual({
-      content: [{ type: "text", text: "Imported OpenViking resource. viking://resources/project-docs Warnings: kept existing metadata" }],
+      content: [{ type: "text", text: "Imported KMM resource. viking://resources/project-docs Warnings: kept existing metadata" }],
       details: {
         action: "resource_imported",
         root_uri: "viking://resources/project-docs",
@@ -701,7 +701,7 @@ describe("plugin module seams", () => {
       wait: false,
       timeout: 5,
     }, "agent-main")).resolves.toEqual({
-      content: [{ type: "text", text: "Imported OpenViking skill (debugger). viking://user/skills/debugger" }],
+      content: [{ type: "text", text: "Imported KMM skill (debugger). viking://user/skills/debugger" }],
       details: {
         action: "skill_imported",
         uri: "viking://user/skills/debugger",
@@ -729,15 +729,15 @@ describe("plugin module seams", () => {
       registerRecallTraceRoutes,
     });
 
-    expect(service.id).toBe("openviking");
+    expect(service.id).toBe("kmm");
     await service.start({ registerRoute: vi.fn() });
     service.stop();
 
     expect(registerRecallTraceRoutes).toHaveBeenCalled();
     expect(healthCheck).toHaveBeenCalled();
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("openviking: initialized"));
-    expect(logger.info).toHaveBeenCalledWith("openviking: registered recall trace Gateway routes");
-    expect(logger.info).toHaveBeenCalledWith("openviking: stopped");
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("kmm: initialized"));
+    expect(logger.info).toHaveBeenCalledWith("kmm: registered recall trace Gateway routes");
+    expect(logger.info).toHaveBeenCalledWith("kmm: stopped");
   });
 
   it("registers lifecycle hooks through a dedicated plugin module", async () => {
@@ -775,7 +775,7 @@ describe("plugin module seams", () => {
 
     await handlers.get("before_reset")?.({}, { sessionId: "session-3", sessionKey: "key-3" });
     expect(commitOVSession).toHaveBeenCalledWith({ sessionId: "session-3", sessionKey: "key-3" });
-    expect(logger.info).toHaveBeenCalledWith("openviking: committed OV session on reset for session=session-3");
+    expect(logger.info).toHaveBeenCalledWith("kmm: committed OV session on reset for session=session-3");
 
     await handlers.get("before_reset")?.({}, { sessionId: "session-4", sessionKey: "bypass" });
     expect(verboseRoutingInfo).toHaveBeenCalledWith(expect.stringContaining("bypassing before_reset"));
@@ -783,7 +783,7 @@ describe("plugin module seams", () => {
   });
 
   it("registers the context engine through a dedicated plugin module", () => {
-    const engine = { id: "openviking", commitOVSession: vi.fn() };
+    const engine = { id: "kmm", commitOVSession: vi.fn() };
     const api = { registerContextEngine: vi.fn() };
     const logger = { info: vi.fn(), warn: vi.fn() };
     const getClient = vi.fn();
@@ -796,7 +796,7 @@ describe("plugin module seams", () => {
 
     registerOpenVikingContextEngine({
       api,
-      plugin: { id: "openviking", name: "OpenViking" },
+      plugin: { id: "kmm", name: "Context Engine (KMM)" },
       version: "0.1.0",
       cfg: { baseUrl: "http://127.0.0.1:1933" },
       logger,
@@ -809,14 +809,14 @@ describe("plugin module seams", () => {
       setContextEngineRef,
     });
 
-    expect(api.registerContextEngine).toHaveBeenCalledWith("openviking", expect.any(Function));
+    expect(api.registerContextEngine).toHaveBeenCalledWith("kmm", expect.any(Function));
     expect(createContextEngine).not.toHaveBeenCalled();
     const registeredFactory = api.registerContextEngine.mock.calls[0]?.[1];
 
     expect(registeredFactory()).toBe(engine);
     expect(createContextEngine).toHaveBeenCalledWith({
-      id: "openviking",
-      name: "OpenViking",
+      id: "kmm",
+      name: "Context Engine (KMM)",
       version: "0.1.0",
       cfg: { baseUrl: "http://127.0.0.1:1933" },
       logger,
@@ -835,7 +835,7 @@ describe("plugin module seams", () => {
 
     registerOpenVikingContextEngine({
       api: {},
-      plugin: { id: "openviking", name: "OpenViking" },
+      plugin: { id: "kmm", name: "Context Engine (KMM)" },
       version: "0.1.0",
       cfg: {},
       logger,
@@ -875,9 +875,9 @@ describe("plugin module seams", () => {
     registerOpenVikingToolResultTools(deps);
 
     expect(registerTool.mock.calls.map(([, opts]) => opts.name)).toEqual([
-      "openviking_tool_result_read",
-      "openviking_tool_result_search",
-      "openviking_tool_result_list",
+      "kmm_tool_result_read",
+      "kmm_tool_result_search",
+      "kmm_tool_result_list",
     ]);
     const readFactory = registerTool.mock.calls[0]?.[0];
     const readTool = readFactory({ sessionId: "session-1" });
@@ -935,8 +935,8 @@ describe("plugin module seams", () => {
     registerOpenVikingArchiveTools(deps);
 
     expect(registerTool.mock.calls.map(([, opts]) => opts.name)).toEqual([
-      "ov_archive_search",
-      "ov_archive_expand",
+      "kmm_archive_search",
+      "kmm_archive_expand",
     ]);
     const searchFactory = registerTool.mock.calls[0]?.[0];
     const searchTool = searchFactory({ sessionId: "session-1", sessionKey: "session-key" });
@@ -1005,7 +1005,7 @@ describe("plugin module seams", () => {
       wait: true,
       timeout: 30,
     }, "agent-main");
-    expect(resourceResult.content[0].text).toBe("Imported OpenViking resource. viking://resources/docs Warnings: warn");
+    expect(resourceResult.content[0].text).toBe("Imported KMM resource. viking://resources/docs Warnings: warn");
     expect(resourceResult.details).toMatchObject({ action: "resource_imported", root_uri: "viking://resources/docs" });
 
     const addSkillFactory = registerTool.mock.calls[1]?.[0];
@@ -1017,7 +1017,7 @@ describe("plugin module seams", () => {
       wait: undefined,
       timeout: undefined,
     }, "agent-main");
-    expect(skillResult.content[0].text).toBe("Imported OpenViking skill (demo). viking://user/skills/demo");
+    expect(skillResult.content[0].text).toBe("Imported KMM skill (demo). viking://user/skills/demo");
     expect(skillResult.details).toMatchObject({ action: "skill_imported", uri: "viking://user/skills/demo" });
   });
 
@@ -1070,7 +1070,7 @@ describe("plugin module seams", () => {
 
     registerOpenVikingQueryTools(deps);
 
-    expect(registerTool.mock.calls.map(([, opts]) => opts.name)).toEqual(["ov_search", "ov_read", "ov_multi_read", "ov_list"]);
+    expect(registerTool.mock.calls.map(([, opts]) => opts.name)).toEqual(["kmm_search", "kmm_read", "kmm_multi_read", "kmm_list"]);
     const searchFactory = registerTool.mock.calls[0]?.[0];
     const searchTool = searchFactory({ sessionId: "session-1" });
     const searched = await searchTool.execute("call-1", { query: "docs", uri: "viking://resources", limit: 3 });
@@ -1200,7 +1200,7 @@ describe("plugin module seams", () => {
 
     registerOpenVikingRecallTraceTools(deps);
 
-    expect(registerTool.mock.calls.map(([, opts]) => opts.name)).toEqual(["ov_recall_trace"]);
+    expect(registerTool.mock.calls.map(([, opts]) => opts.name)).toEqual(["kmm_recall_trace"]);
     const traceFactory = registerTool.mock.calls[0]?.[0];
     const traceTool = traceFactory({ sessionId: "session-1" });
     const result = await traceTool.execute("call-1", { source: "ov_search", limit: 5 });

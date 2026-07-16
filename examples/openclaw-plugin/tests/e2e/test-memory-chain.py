@@ -48,12 +48,12 @@ OpenClaw 记忆链路完整端到端测试
   4. 有效的 Gateway auth token
 
   关键 openclaw.json 配置（影响测试行为）:
-    - plugins.slots.contextEngine = "openviking"   # 使用 OV 作为 context engine
+    - plugins.slots.contextEngine = "kmm"   # 使用 OV 作为 context engine
     - plugins.slots.memory = "none"                # 不使用内置 memory-core
-    - plugins.entries.openviking.enabled = true     # 启用 OV 插件
-    - plugins.entries.openviking.config.autoCapture = true  # afterTurn 自动捕获
-    - plugins.entries.openviking.config.autoRecall = true   # 新用户自动召回记忆
-    - plugins.entries.openviking.config.commitTokenThresholdRatio = 0
+    - plugins.entries.kmm.enabled = true     # 启用 OV 插件
+    - plugins.entries.kmm.config.autoCapture = true  # afterTurn 自动捕获
+    - plugins.entries.kmm.config.autoRecall = true   # 新用户自动召回记忆
+    - plugins.entries.kmm.config.commitTokenThresholdRatio = 0
       ↑ 此值控制 auto-commit 触发时机，按模型上下文窗口的比例计算。
         设为 0 时每轮都 commit；若比例较大（如 0.8），测试中 auto-commit
         不会提前发生，Phase 3 的 commit 验证行为会不同。脚本已兼容两种场景。

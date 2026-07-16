@@ -59,16 +59,16 @@ export function registerOpenVikingRecallTraceTools(
 ): void {
   deps.registerTool(
     (ctx: OpenVikingRecallTraceToolContext) => ({
-      name: "ov_recall_trace",
-      label: "Recall Trace (OpenViking)",
+      name: "kmm_recall_trace",
+      label: "Recall Trace (KMM)",
       description:
-        "Query OpenViking recall trace records captured by auto-recall and explicit recall/search tools.",
+        "Query KMM recall trace records captured by auto-recall and explicit recall/search tools.",
       parameters: Type.Object({
         turn: Type.Optional(Type.String({ description: "latest or all (default: latest)" })),
         traceId: Type.Optional(Type.String({ description: "Exact trace id" })),
         sessionId: Type.Optional(Type.String({ description: "OpenClaw session id" })),
         sessionKey: Type.Optional(Type.String({ description: "OpenClaw session key" })),
-        ovSessionId: Type.Optional(Type.String({ description: "OpenViking session id" })),
+        ovSessionId: Type.Optional(Type.String({ description: "KMM session id" })),
         source: Type.Optional(Type.String({ description: "auto_recall, memory_recall, ov_search, or ov_archive_search" })),
         resourceTypes: Type.Optional(Type.Array(Type.String({ description: "resource, user, or agent" }))),
         since: Type.Optional(Type.Number({ description: "Unix timestamp lower bound in milliseconds" })),
@@ -78,7 +78,7 @@ export function registerOpenVikingRecallTraceTools(
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (deps.isBypassedSession(ctx)) {
-          return deps.makeBypassedToolResult("ov_recall_trace");
+          return deps.makeBypassedToolResult("kmm_recall_trace");
         }
         const session = deps.resolvePluginSessionRouting(ctx);
         const result = await deps.queryRecallTraces(params as RecallTraceToolInput, session);
@@ -94,6 +94,6 @@ export function registerOpenVikingRecallTraceTools(
         };
       },
     }),
-    { name: "ov_recall_trace" },
+    { name: "kmm_recall_trace" },
   );
 }

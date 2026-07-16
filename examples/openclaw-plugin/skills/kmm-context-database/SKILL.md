@@ -1,19 +1,19 @@
 ---
-name: openviking-context-database
+name: kmm-context-database
 description: >
-  Use OpenViking from OpenClaw through @openviking/openclaw-plugin: long-term memory,
+  Use KMM from OpenClaw through @kmm/openclaw-plugin: long-term memory,
   session archives, resource and Agent Skill import, semantic recall, recall trace debugging,
   and externalized tool-result recovery. Prefer this skill when the user wants to use, query,
-  debug, or operate OpenViking context from an OpenClaw agent. For first-time plugin installation,
-  use the install-openviking-memory skill instead.
+  debug, or operate KMM context from an OpenClaw agent. For first-time plugin installation,
+  use the install-kmm-memory skill instead.
 version: 2026.6.5
 metadata:
   openclaw:
     requires:
-      plugin: "@openviking/openclaw-plugin"
+      plugin: "@kmm/openclaw-plugin"
   emoji: "🦣"
 tags:
-  - openviking
+  - kmm
   - context-engine
   - memory
   - resources
@@ -21,28 +21,28 @@ tags:
   - recall-trace
 ---
 
-# OpenViking Context Database — OpenClaw Plugin Operator Skill
+# KMM Context Database — OpenClaw Plugin Operator Skill
 
-Use this skill after `@openviking/openclaw-plugin` is installed and configured. It describes the current OpenClaw plugin implementation, not the standalone OpenViking Python SDK.
+Use this skill after `@kmm/openclaw-plugin` is installed and configured. It describes the current OpenClaw plugin implementation, not the standalone KMM Python SDK.
 
 ## Scope and Safety Rules
 
-- The plugin is **remote-only**. It talks to an existing OpenViking server through HTTP and does not start or manage `openviking-server`.
-- Do not invent OpenViking REST endpoints. Use the registered OpenClaw tools and commands described below.
-- The agent-visible `add_resource` tool is disabled by default (`enableAddResourceTool=false`). Do not use `add_resource` during search, retrieval, URI reading, or search-result optimization. Use `ov_search` and `ov_read` in those flows.
+- The plugin is **remote-only**. It talks to an existing KMM server through HTTP and does not start or manage `kmm-server`.
+- Do not invent KMM REST endpoints. Use the registered OpenClaw tools and commands described below.
+- The agent-visible `add_resource` tool is disabled by default (`enableAddResourceTool=false`). Do not use `add_resource` during search, retrieval, URI reading, or search-result optimization. Use `kmm_search` and `kmm_read` in those flows.
 - Use manual `/add-resource`, or `add_resource` only when it is explicitly enabled and the user explicitly asks to import, add, upload, save, or index a resource.
-- Use `add_skill` only when the user explicitly asks to import, add, install, or register an Agent Skill into OpenViking.
+- Use `add_skill` only when the user explicitly asks to import, add, install, or register an Agent Skill into KMM.
 - For local files and directories, pass the local path to the plugin tool. The plugin uploads them through `/api/v1/resources/temp_upload`; do not send raw local filesystem paths to a remote server yourself.
 - Never log or echo API keys. The plugin sends API keys as `X-API-Key` / setup probe headers and masks them in setup output.
 
 ## Current Architecture
 
-OpenClaw owns agent execution, prompts, and tool invocation. OpenViking owns long-lived context:
+OpenClaw owns agent execution, prompts, and tool invocation. KMM owns long-lived context:
 
 | Layer | Current behavior |
 |---|---|
-| `assemble` | Rebuilds compressed session history from OpenViking and injects relevant recall into the latest user message. |
-| `afterTurn` | Appends only the new turn to the OpenViking session; may trigger async commit when `pending_tokens >= tokenBudget * commitTokenThresholdRatio`. |
+| `assemble` | Rebuilds compressed session history from KMM and injects relevant recall into the latest user message. |
+| `afterTurn` | Appends only the new turn to the KMM session; may trigger async commit when `pending_tokens >= tokenBudget * commitTokenThresholdRatio`. |
 | `compact` | Runs `commit(wait=true)`, waits for archive/extraction completion, and reads back latest archive overview. |
 | Tools | Memory recall/store/forget, archive search/expand, resource/skill import/search, recall trace query, tool-result list/search/read. |
 
@@ -53,22 +53,22 @@ Long-term memories are usually extracted on `/compact` or on threshold-triggered
 Read status first:
 
 ```bash
-openclaw openviking status --json
-openclaw config get plugins.entries.openviking.config
+openclaw kmm status --json
+openclaw config get plugins.entries.kmm.config
 openclaw config get plugins.slots.contextEngine
 ```
 
-Core config lives under `plugins.entries.openviking.config`:
+Core config lives under `plugins.entries.kmm.config`:
 
 | Field | Default | Purpose |
 |---|---:|---|
-| `baseUrl` | `http://127.0.0.1:1933` | OpenViking HTTP endpoint. Can also come from `OPENVIKING_BASE_URL` / `OPENVIKING_URL`. |
-| `apiKey` | empty | Optional API key. Can also come from `OPENVIKING_API_KEY`. |
-| `peer_role` | `assistant` | Peer identity mode: `none`, `assistant`, or `person`. Session messages use body `peer_id`; data-plane recall/search uses `X-OpenViking-Actor-Peer`. |
+| `baseUrl` | `http://127.0.0.1:1933` | KMM HTTP endpoint. Can also come from `KMM_BASE_URL` / `KMM_URL`. |
+| `apiKey` | empty | Optional API key. Can also come from `KMM_API_KEY`. |
+| `peer_role` | `assistant` | Peer identity mode: `none`, `assistant`, or `person`. Session messages use body `peer_id`; data-plane recall/search uses tenant identity headers. |
 | `peer_prefix` | empty | Optional prefix for assistant `peer_id` / actor peer values when `peer_role=assistant`. |
 | `accountId` / `userId` | empty | Advanced tenant identity headers for root-key or trusted deployments. |
 | `targetUri` | `viking://user/memories` | Default search scope for legacy targeted memory search. |
-| `autoCapture` | `true` | Append sanitized turn text to OpenViking sessions. |
+| `autoCapture` | `true` | Append sanitized turn text to KMM sessions. |
 | `captureMode` | `semantic` | `semantic` or `keyword`; affects server-side extraction filtering. |
 | `captureMaxLength` | `24000` | Max sanitized text length per captured turn. |
 | `autoRecall` | `true` | Run recall before replies and inject relevant context. |
@@ -79,27 +79,27 @@ Core config lives under `plugins.entries.openviking.config`:
 | `recallMaxInjectedChars` | `4000` | Total injected character cap; complete memories that do not fit are skipped. |
 | `commitTokenThresholdRatio` | `0.5` | Async-commit threshold as a fraction (0-1) of the model context window (e.g. 0.5 = 50%); `0` commits every turn. |
 | `commitKeepRecentCount` | `10` | Recent messages kept live after afterTurn commit. Compact always uses `0`. |
-| `bypassSessionPatterns` | empty | Glob-like session keys that completely bypass OpenViking (`*` segment, `**` multi-segment). |
-| `emitStandardDiagnostics` | `false` | Emit structured `openviking: diag {...}` lines. |
-| `logFindRequests` | `false` | Log routing for find/session writes. Also enabled by `OPENVIKING_LOG_ROUTING=1` or `OPENVIKING_DEBUG=1`. |
+| `bypassSessionPatterns` | empty | Glob-like session keys that completely bypass KMM (`*` segment, `**` multi-segment). |
+| `emitStandardDiagnostics` | `false` | Emit structured `kmm: diag {...}` lines. |
+| `logFindRequests` | `false` | Log routing for find/session writes. Also enabled by `KMM_LOG_ROUTING=1` or `KMM_DEBUG=1`. |
 | `traceRecall` | `false` | Record recall traces in memory. |
 | `traceRecallPersist` | `false` | Persist recall traces as local JSONL files. |
-| `traceRecallDir` | `~/.openclaw/openviking/recall-traces` | Recall trace directory when persistence is enabled. |
+| `traceRecallDir` | `~/.openclaw/kmm/recall-traces` | Recall trace directory when persistence is enabled. |
 
 Normal setup command:
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --json
 ```
 
 Useful variants:
 
 ```bash
-openclaw openviking setup --base-url <URL> --api-key <KEY> --peer-prefix openclaw-prod --json
-openclaw openviking setup --base-url <URL> --api-key <ROOT_KEY> --account-id <ACCOUNT_ID> --user-id <USER_ID> --json
-openclaw openviking setup --base-url <URL> --api-key <KEY> --recall-target-types resource --json
-openclaw openviking setup --base-url <URL> --api-key <KEY> --allow-offline --json
-openclaw openviking setup --base-url <URL> --api-key <KEY> --force-slot --json
+openclaw kmm setup --base-url <URL> --api-key <KEY> --peer-prefix openclaw-prod --json
+openclaw kmm setup --base-url <URL> --api-key <ROOT_KEY> --account-id <ACCOUNT_ID> --user-id <USER_ID> --json
+openclaw kmm setup --base-url <URL> --api-key <KEY> --recall-target-types resource --json
+openclaw kmm setup --base-url <URL> --api-key <KEY> --allow-offline --json
+openclaw kmm setup --base-url <URL> --api-key <KEY> --force-slot --json
 ```
 
 ## Tool Selection Guide
@@ -109,13 +109,13 @@ openclaw openviking setup --base-url <URL> --api-key <KEY> --force-slot --json
 | “What did I say before?”, preferences, decisions, known facts | `memory_recall` |
 | “Remember this now” | `memory_store` |
 | “Forget X” | `memory_forget` |
-| Summary lacks an exact command/path/snippet from old chat | `ov_archive_search`, then `ov_archive_expand` if needed |
+| Summary lacks an exact command/path/snippet from old chat | `kmm_archive_search`, then `kmm_archive_expand` if needed |
 | Import docs, PDFs, local dirs, URLs, Git repos, media attachments | manual `/add-resource`; `add_resource` only if `enableAddResourceTool=true` |
 | Import/register an Agent Skill | `add_skill` |
-| Search imported resources or skills | `ov_search` |
-| Read an exact `viking://...` hit from `ov_search` or recall trace | `ov_read` |
-| Explain why recall/search returned something | `ov_recall_trace` |
-| A previous tool result shows only a preview/ref | `openviking_tool_result_list`, `openviking_tool_result_search`, `openviking_tool_result_read` |
+| Search imported resources or skills | `kmm_search` |
+| Read an exact `viking://...` hit from `kmm_search` or recall trace | `kmm_read` |
+| Explain why recall/search returned something | `kmm_recall_trace` |
+| A previous tool result shows only a preview/ref | `kmm_tool_result_list`, `kmm_tool_result_search`, `kmm_tool_result_read` |
 
 ## Tool Interface Reference
 
@@ -141,7 +141,7 @@ Persist text immediately by writing a session and committing with `wait=true`.
 |---|---|---|
 | `text` | Yes | Information source text. |
 | `role` | No | Session role, default `user`. |
-| `sessionId` | No | Existing OpenViking/OpenClaw session reference. If omitted, a temporary `memory-store-*` session is created. |
+| `sessionId` | No | Existing KMM/OpenClaw session reference. If omitted, a temporary `memory-store-*` session is created. |
 
 ### `memory_forget`
 
@@ -157,7 +157,7 @@ Delete a memory.
 
 If query mode finds multiple candidates, report candidates and ask the user to choose the exact URI; do not delete ambiguous memories.
 
-### `ov_archive_search`
+### `kmm_archive_search`
 
 Keyword grep across archived original conversation messages of the current session.
 
@@ -168,7 +168,7 @@ Keyword grep across archived original conversation messages of the current sessi
 
 Try at least two concrete keyword variants before concluding archived detail is unavailable.
 
-### `ov_archive_expand`
+### `kmm_archive_expand`
 
 | Parameter | Required | Description |
 |---|---|---|
@@ -207,7 +207,7 @@ Import Agent Skills into `viking://user/skills/...`.
 
 Agent Skill best practice: a skill should have precise frontmatter (`name`, trigger-oriented `description`, useful `tags`), clear scope boundaries, explicit “when not to use” guidance if needed, and executable steps with concrete parameters. Keep secrets out of skill content.
 
-### `ov_search`
+### `kmm_search`
 
 | Parameter | Required | Description |
 |---|---|---|
@@ -215,26 +215,26 @@ Agent Skill best practice: a skill should have precise frontmatter (`name`, trig
 | `uri` | No | Search URI. Defaults to resources plus agent skills. |
 | `limit` | No | Max results per scope, default `10`. |
 
-Use after importing resources/skills, or when the user asks to search OpenViking-managed knowledge.
+Use after importing resources/skills, or when the user asks to search KMM-managed knowledge.
 
-Important: `ov_search` returns OpenViking virtual URIs such as `viking://resources/project-docs/api.md#chunk-3`. These are not local file paths. Do not use filesystem read tools for them; call `ov_read` with the exact URI when full content is needed.
+Important: `kmm_search` returns KMM virtual URIs such as `viking://resources/project-docs/api.md#chunk-3`. These are not local file paths. Do not use filesystem read tools for them; call `kmm_read` with the exact URI when full content is needed.
 
-### `ov_read`
+### `kmm_read`
 
-Read full content for one exact OpenViking virtual URI through `/api/v1/content/read`.
+Read full content for one exact KMM virtual URI through `/api/v1/content/read`.
 
 | Parameter | Required | Description |
 |---|---|---|
-| `uri` | Yes | Exact `viking://...` URI returned by `ov_search` or recall trace results. `openviking://...` aliases and local file paths are refused. |
+| `uri` | Yes | Exact `viking://...` URI returned by `kmm_search` or recall trace results. `kmm://...` aliases and local file paths are refused. |
 
-### `ov_recall_trace`
+### `kmm_recall_trace`
 
 | Parameter | Required | Description |
 |---|---|---|
 | `turn` | No | `latest` or `all`, default `latest`. |
 | `traceId` | No | Exact trace ID. |
-| `sessionId` / `sessionKey` / `ovSessionId` | No | Filter by OpenClaw/OpenViking session. |
-| `source` | No | `auto_recall`, `memory_recall`, `ov_search`, or `ov_archive_search`. |
+| `sessionId` / `sessionKey` / `ovSessionId` | No | Filter by OpenClaw/KMM session. |
+| `source` | No | `auto_recall`, `memory_recall`, `kmm_search`, or `kmm_archive_search`. |
 | `resourceTypes` | No | Array/string containing `resource`, `user`, `agent`. |
 | `since` / `until` | No | Unix timestamp bounds in milliseconds. |
 | `includeContent` | No | Read selected/displayed URI content previews on demand. |
@@ -248,19 +248,19 @@ Use when a preview contains `viking://session/<session_id>/tool-results/<tool_re
 
 | Tool | Parameters |
 |---|---|
-| `openviking_tool_result_list` | `tool_name?`, `limit?` (default `50`) |
-| `openviking_tool_result_search` | `tool_output_ref`, `query`, `limit?` (default `20`), `context_chars?` (default `300`) |
-| `openviking_tool_result_read` | `tool_output_ref`, `offset?` (default `0`), `limit?` (default `20000`, `-1` accepted by server path for all remaining content) |
+| `kmm_tool_result_list` | `tool_name?`, `limit?` (default `50`) |
+| `kmm_tool_result_search` | `tool_output_ref`, `query`, `limit?` (default `20`), `context_chars?` (default `300`) |
+| `kmm_tool_result_read` | `tool_output_ref`, `offset?` (default `0`), `limit?` (default `20000`, `-1` accepted by server path for all remaining content) |
 
 The plugin refuses to read/search a tool-result ref from another session.
 
 ## Slash Commands
 
 ```text
-/add-resource ./README.md --to viking://resources/openviking-readme --wait
-/add-skill ./skills/install-openviking-memory --wait --timeout=30
-/ov-search "OpenViking install" --uri viking://resources/openviking-readme --limit=5
-/ov-recall-trace --turn latest --source auto_recall --include-content
+/add-resource ./README.md --to viking://resources/kmm-readme --wait
+/add-skill ./skills/install-kmm-memory --wait --timeout=30
+/kmm-search "KMM install" --uri viking://resources/kmm-readme --limit=5
+/kmm-recall-trace --turn latest --source auto_recall --include-content
 ```
 
 Command parsers support quoted args and flags. Resource-only flags are rejected for skill imports.
@@ -269,18 +269,18 @@ Command parsers support quoted args and flags. Resource-only flags are rejected 
 
 | Symptom | Likely cause | First action |
 |---|---|---|
-| `configured=false` | Setup did not persist config | Re-run `openclaw openviking setup ... --json`; branch on JSON `error`. |
+| `configured=false` | Setup did not persist config | Re-run `openclaw kmm setup ... --json`; branch on JSON `error`. |
 | `slotActive=false` | Another context engine owns the slot or gateway has stale state | Inspect `plugins.slots.contextEngine`; use `--force-slot` only after user confirms. |
 | `health.ok=false` | Server unreachable or wrong `baseUrl` / key | Check `baseUrl`, network, `/health`, and auth. |
-| No long-term memory after a fresh fact | `/compact` or commit/extraction has not run, or server extraction failed | Use `memory_store` for explicit remember/save/store intents; otherwise run `/compact` or wait for threshold commit, then check OpenViking server logs. |
+| No long-term memory after a fresh fact | `/compact` or commit/extraction has not run, or server extraction failed | Use `memory_store` for explicit remember/save/store intents; otherwise run `/compact` or wait for threshold commit, then check KMM server logs. |
 | Recall misses shared documents | `resource` target is not enabled | Use `memory_recall` with `resourceTypes:["resource"]` or configure `recallTargetTypes: ["resource"]`. |
-| Summary lacks exact detail | Archive summary is too coarse | Use `ov_archive_search` with concrete keywords, then `ov_archive_expand`. |
-| Large tool output preview is insufficient | Tool result was externalized | Use `openviking_tool_result_search/read` with the ref. |
-| Need to explain recall behavior | Trace disabled or no trace for that turn | Enable `traceRecall`; optionally `traceRecallPersist`; query `ov_recall_trace`. |
+| Summary lacks exact detail | Archive summary is too coarse | Use `kmm_archive_search` with concrete keywords, then `kmm_archive_expand`. |
+| Large tool output preview is insufficient | Tool result was externalized | Use `kmm_tool_result_search/read` with the ref. |
+| Need to explain recall behavior | Trace disabled or no trace for that turn | Enable `traceRecall`; optionally `traceRecallPersist`; query `kmm_recall_trace`. |
 
 ## Reference Docs in This Repo
 
 - `README.md` / `README_CN.md`: feature overview and quick start.
 - `INSTALL.md` / `INSTALL-ZH.md`: install, upgrade, uninstall, and JSON setup handling.
 - `INSTALL-AGENT.md`: agent-oriented installation workflow.
-- `docs/openviking-openclaw-plugin-guide.md`: comprehensive Chinese operator/developer guide.
+- `docs/kmm-openclaw-plugin-guide.md`: comprehensive Chinese operator/developer guide.

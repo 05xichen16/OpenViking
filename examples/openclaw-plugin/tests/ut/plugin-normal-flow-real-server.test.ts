@@ -251,7 +251,7 @@ describe("plugin normal flow with healthy backend", () => {
 
     const latest = transformed.messages.at(-1);
     expect(latest?.role).toBe("user");
-    expect(String(latest?.content)).toContain("Source: openviking-auto-recall");
+    expect(String(latest?.content)).toContain("Source: kmm-auto-recall");
     expect(String(latest?.content)).toContain("User prefers Rust for backend tasks.");
     expect(String(latest?.content)).toContain("what backend language should we use?");
 

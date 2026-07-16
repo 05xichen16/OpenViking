@@ -37,9 +37,9 @@ extractNewTurnTexts 工具调用捕获端到端测试
   4. 有效的 Gateway auth token
 
   关键 openclaw.json 配置:
-    - plugins.slots.contextEngine = "openviking"
-    - plugins.entries.openviking.enabled = true
-    - plugins.entries.openviking.config.autoCapture = true  # afterTurn 自动捕获
+    - plugins.slots.contextEngine = "kmm"
+    - plugins.entries.kmm.enabled = true
+    - plugins.entries.kmm.config.autoCapture = true  # afterTurn 自动捕获
 
 ================================================================================
 四、使用方法

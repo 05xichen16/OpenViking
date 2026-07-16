@@ -34,7 +34,7 @@ afterEach(() => {
 describe("conversations CLI: readOpenVikingRawConfig", () => {
   it("extracts plugins.entries.openviking.config from openclaw.json", () => {
     const dir = tempStateDir({
-      plugins: { entries: { openviking: { config: { baseUrl: "http://x:1933", apiKey: "sk" } } } },
+      plugins: { entries: { kmm: { config: { baseUrl: "http://x:1933", apiKey: "sk" } } } },
     });
     expect(readOpenVikingRawConfig(dir)).toEqual({ baseUrl: "http://x:1933", apiKey: "sk" });
   });
@@ -127,12 +127,12 @@ describe("conversations CLI: command registration", () => {
     try {
       // Empty baseUrl short-circuits before any client/network call.
       process.env.OPENCLAW_STATE_DIR = tempStateDir({
-        plugins: { entries: { openviking: { config: { baseUrl: "" } } } },
+        plugins: { entries: { kmm: { config: { baseUrl: "" } } } },
       });
       process.exitCode = 0;
       await conv.record.actionFn!([], {});
       expect(process.exitCode).toBe(1);
-      expect(errs.join(" ")).toMatch(/OpenViking conversations failed/);
+      expect(errs.join(" ")).toMatch(/KMM conversations failed/);
       expect(errs.join(" ")).toMatch(/baseUrl is not set|not configured/i);
     } finally {
       errSpy.mockRestore();

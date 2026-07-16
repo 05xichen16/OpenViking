@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { Type, type Static } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 
-export const OPENVIKING_260610_FEATURE = "openviking.260610";
+export const OPENVIKING_260610_FEATURE = "kmm.260610";
 export const OPENVIKING_FEATURE_GATES_RPC = "openviking.feature.gates";
 
 const versionPattern = String.raw`^\d+\.\d+\.\d+(?:-(?:\d+|beta(?:\.\d+)?))?$`;

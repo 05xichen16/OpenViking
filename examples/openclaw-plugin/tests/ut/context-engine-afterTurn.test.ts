@@ -60,7 +60,7 @@ function makeEngine(opts?: {
   const resolveAgentId = vi.fn((_sid: string) => "test-agent");
 
   const engine = createMemoryOpenVikingContextEngine({
-    id: "openviking",
+    id: "kmm",
     name: "Test Engine",
     version: "test",
     cfg,

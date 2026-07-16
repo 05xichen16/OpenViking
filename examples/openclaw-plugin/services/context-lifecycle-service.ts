@@ -197,7 +197,7 @@ async function pollPhase2ExtractionOutcome(
     while (Date.now() < deadline) {
       await sleep(PHASE2_POLL_INTERVAL_MS);
       const task = await client.getTask(taskId, agentId).catch((e) => {
-        logger.warn?.(`openviking: phase2 getTask failed task_id=${taskId}: ${String(e)}`);
+        logger.warn?.(`kmm: phase2 getTask failed task_id=${taskId}: ${String(e)}`);
         return null;
       });
       if (!task) {
@@ -206,24 +206,24 @@ async function pollPhase2ExtractionOutcome(
       const { status } = task;
       if (status === "completed") {
         logger.info(
-          `openviking: phase2 completed task_id=${taskId} session=${sessionLabel} ` +
+          `kmm: phase2 completed task_id=${taskId} session=${sessionLabel} ` +
             `result=${toJsonLog(task.result ?? {})}`,
         );
         return;
       }
       if (status === "failed") {
         logger.warn?.(
-          `openviking: phase2 failed task_id=${taskId} session=${sessionLabel} error=${task.error ?? "unknown"}`,
+          `kmm: phase2 failed task_id=${taskId} session=${sessionLabel} error=${task.error ?? "unknown"}`,
         );
         return;
       }
     }
     logger.warn?.(
-      `openviking: phase2 poll timeout (${PHASE2_POLL_MAX_MS / 1000}s) task_id=${taskId} session=${sessionLabel} — ` +
+      `kmm: phase2 poll timeout (${PHASE2_POLL_MAX_MS / 1000}s) task_id=${taskId} session=${sessionLabel} — ` +
         `check GET /api/v1/tasks/${taskId}`,
     );
   } catch (e) {
-    logger.warn?.(`openviking: phase2 poll exception task_id=${taskId}: ${String(e)}`);
+    logger.warn?.(`kmm: phase2 poll exception task_id=${taskId}: ${String(e)}`);
   }
 }
 
@@ -259,7 +259,7 @@ function buildSystemPromptAddition(): string {
     "  The answer may be expressed with different wording than the question.",
     "  Look for synonyms, related facts, and indirect references.**",
     "- If the Summary mentions a topic but lacks the specific detail asked,",
-    "  use the `ov_archive_search` tool to grep the original archived messages",
+    "  use the `kmm_archive_search` tool to grep the original archived messages",
     "  for the exact detail. Try 2-3 different keywords extracted from the question.",
     "- Only conclude information is unavailable AFTER both checking the Summary",
     "  thoroughly AND searching the archives with at least 2 keyword variations.",
@@ -334,7 +334,7 @@ function buildAssembledContext(
   const assembled = [...archive.messages, ...session.messages];
 
   logger.info(
-    `openviking: assemble entering session content for ${ovSessionId}: ` +
+    `kmm: assemble entering session content for ${ovSessionId}: ` +
       JSON.stringify(assembled.map((m) => ({
         role: m.role,
         content: typeof m.content === "string" ? m.content.substring(0, 100) : "[complex]",
@@ -358,7 +358,7 @@ export async function commitOpenVikingSession({
   const ovId = openClawSessionToOvStorageId(sessionId, sessionKey);
   if (isBypassedSession({ sessionId, sessionKey })) {
     logger.warn?.(
-      `openviking: commit skipped because session is bypassed (sessionId=${sessionId}, sessionKey=${sessionKey ?? "none"})`,
+      `kmm: commit skipped because session is bypassed (sessionId=${sessionId}, sessionKey=${sessionKey ?? "none"})`,
     );
     return false;
   }
@@ -377,19 +377,19 @@ export async function commitOpenVikingSession({
     });
     const memCount = totalExtractedMemories(commitResult.memories_extracted);
     if (commitResult.status === "failed") {
-      logger.warn?.(`openviking: commit Phase 2 failed for session=${sessionId}: ${commitResult.error ?? "unknown"}`);
+      logger.warn?.(`kmm: commit Phase 2 failed for session=${sessionId}: ${commitResult.error ?? "unknown"}`);
       return false;
     }
     if (commitResult.status === "timeout") {
-      logger.warn?.(`openviking: commit Phase 2 timed out for session=${sessionId}, task_id=${commitResult.task_id ?? "none"}`);
+      logger.warn?.(`kmm: commit Phase 2 timed out for session=${sessionId}, task_id=${commitResult.task_id ?? "none"}`);
       return false;
     }
     logger.info(
-      `openviking: committed OV session=${sessionId} ovId=${ovId}, archived=${commitResult.archived ?? false}, memories=${memCount}, task_id=${commitResult.task_id ?? "none"}, trace_id=${commitResult.trace_id ?? "none"}`,
+      `kmm: committed OV session=${sessionId} ovId=${ovId}, archived=${commitResult.archived ?? false}, memories=${memCount}, task_id=${commitResult.task_id ?? "none"}, trace_id=${commitResult.trace_id ?? "none"}`,
     );
     return true;
   } catch (err) {
-    logger.warn?.(`openviking: commit failed for session=${sessionId}: ${String(err)}`);
+    logger.warn?.(`kmm: commit failed for session=${sessionId}: ${String(err)}`);
     return false;
   }
 }
@@ -496,7 +496,7 @@ export async function assembleOpenVikingSession({
     }
     if (recallQuery.truncated) {
       logger.info(
-        `openviking: recall query truncated (` +
+        `kmm: recall query truncated (` +
           `chars=${recallQuery.originalChars}->${recallQuery.finalChars})`,
       );
     }
@@ -552,7 +552,7 @@ export async function assembleOpenVikingSession({
       });
       return { messages: withRecall, estimatedTokens };
     } catch (err) {
-      logger.warn?.(`openviking: auto-recall failed: ${String(err)}`);
+      logger.warn?.(`kmm: auto-recall failed: ${String(err)}`);
       return assemblePassthrough({
         diag,
         ovSessionId,
@@ -651,7 +651,7 @@ export async function assembleOpenVikingSession({
     if (isSessionNotFoundError(err)) {
       const errorMessage = String(err);
       logger.info(
-        `openviking: assemble skipped because OV session does not exist ` +
+        `kmm: assemble skipped because OV session does not exist ` +
           `(session=${ovSessionId}, tokenBudget=${tokenBudget}, agentId=${resolveAgentId(ovSessionId)})`,
       );
       return assemblePassthrough({
@@ -670,7 +670,7 @@ export async function assembleOpenVikingSession({
       });
     }
     logger.warn?.(
-      `openviking: assemble failed for session=${ovSessionId}, ` +
+      `kmm: assemble failed for session=${ovSessionId}, ` +
         `tokenBudget=${tokenBudget}, agentId=${resolveAgentId(ovSessionId)}: ${String(err)}`,
     );
     diag("assemble_error", ovSessionId, {
@@ -947,7 +947,7 @@ export async function afterTurnOpenVikingSession({
       keepRecentCount: cfg.commitKeepRecentCount,
     });
     logger.info(
-      `openviking: committed session=${ovSessionId}, ` +
+      `kmm: committed session=${ovSessionId}, ` +
         `status=${commitResult.status}, archived=${commitResult.archived ?? false}, ` +
         `task_id=${commitResult.task_id ?? "none"}, trace_id=${commitResult.trace_id ?? "none"}`,
     );
@@ -966,13 +966,13 @@ export async function afterTurnOpenVikingSession({
     });
     if (commitResult.task_id && cfg.logFindRequests) {
       logger.info(
-        `openviking: Phase2 memory extraction runs asynchronously on the server (task_id=${commitResult.task_id}). ` +
+        `kmm: Phase2 memory extraction runs asynchronously on the server (task_id=${commitResult.task_id}). ` +
           "memories_extracted appears only after that task completes — not in this immediate response.",
       );
       void pollPhase2ExtractionOutcome(client, commitResult.task_id, agentId, logger, ovSessionId);
     }
   } catch (err) {
-    logger.warn?.(`openviking: afterTurn failed: ${String(err)}`);
+    logger.warn?.(`kmm: afterTurn failed: ${String(err)}`);
     const sender = extractRuntimeSenderId(runtimeContext);
     diag("afterTurn_error", sessionId ?? "(unknown)", {
       error: String(err),
@@ -1056,7 +1056,7 @@ export async function compactOpenVikingSession({
       }
     } catch (preCtxErr) {
       logger.info(
-        `openviking: compact pre-ctx fetch failed for session=${ovSessionId}, ` +
+        `kmm: compact pre-ctx fetch failed for session=${ovSessionId}, ` +
           `tokenBudget=${tokenBudget}, agentId=${agentId}: ${String(preCtxErr)}`,
       );
     }
@@ -1066,7 +1066,7 @@ export async function compactOpenVikingSession({
 
   try {
     logger.info(
-      `openviking: compact committing session=${ovSessionId} (wait=true, tokenBudget=${tokenBudget})`,
+      `kmm: compact committing session=${ovSessionId} (wait=true, tokenBudget=${tokenBudget})`,
     );
     const commitResult = await client.commitSession(ovSessionId, {
       wait: true,
@@ -1077,7 +1077,7 @@ export async function compactOpenVikingSession({
 
     if (commitResult.status === "failed") {
       logger.warn?.(
-        `openviking: compact commit Phase 2 failed for session=${ovSessionId}: ${commitResult.error ?? "unknown"}`,
+        `kmm: compact commit Phase 2 failed for session=${ovSessionId}: ${commitResult.error ?? "unknown"}`,
       );
       diag("compact_result", ovSessionId, {
         ok: false,
@@ -1093,7 +1093,7 @@ export async function compactOpenVikingSession({
 
     if (commitResult.status === "timeout") {
       logger.warn?.(
-        `openviking: compact commit Phase 2 timed out for session=${ovSessionId}, task_id=${commitResult.task_id ?? "none"}`,
+        `kmm: compact commit Phase 2 timed out for session=${ovSessionId}, task_id=${commitResult.task_id ?? "none"}`,
       );
       diag("compact_result", ovSessionId, {
         ok: false,
@@ -1107,12 +1107,12 @@ export async function compactOpenVikingSession({
     }
 
     logger.info(
-      `openviking: compact committed session=${ovSessionId}, archived=${commitResult.archived ?? false}, memories=${memCount}, task_id=${commitResult.task_id ?? "none"}, trace_id=${commitResult.trace_id ?? "none"}`,
+      `kmm: compact committed session=${ovSessionId}, archived=${commitResult.archived ?? false}, memories=${memCount}, task_id=${commitResult.task_id ?? "none"}, trace_id=${commitResult.trace_id ?? "none"}`,
     );
 
     if (!commitResult.archived) {
       logger.info(
-        `openviking: compact no archive for session=${ovSessionId}, ` +
+        `kmm: compact no archive for session=${ovSessionId}, ` +
           `tokensBefore=${tokensBefore}, tokensAfter=${tokensBefore}`,
       );
       diag("compact_result", ovSessionId, {
@@ -1148,7 +1148,7 @@ export async function compactOpenVikingSession({
     try {
       const ctx = await client.getSessionContext(ovSessionId, tokenBudget, agentId);
       logger.info(
-        `openviking: compact getSessionContext raw result for ${ovSessionId}: ` +
+        `kmm: compact getSessionContext raw result for ${ovSessionId}: ` +
           JSON.stringify(ctx, null, 2),
       );
       if (typeof ctx.latest_archive_overview === "string") {
@@ -1158,7 +1158,7 @@ export async function compactOpenVikingSession({
         tokensAfter = ctx.estimatedTokens;
       }
       logger.info(
-        `openviking: compact restored session content for ${ovSessionId}: ` +
+        `kmm: compact restored session content for ${ovSessionId}: ` +
           `messages=${ctx.messages?.length ?? 0}, ` +
           `latestArchiveOverview=${summary.length > 0 ? "present" : "empty"} (${summary.length} chars), ` +
           `preArchiveAbstracts=${ctx.pre_archive_abstracts?.length ?? 0}, ` +
@@ -1166,7 +1166,7 @@ export async function compactOpenVikingSession({
       );
       if (summary.length > 0) {
         logger.info(
-          `openviking: compact latest_archive_overview for ${ovSessionId}: ${summary.substring(0, 200)}...`,
+          `kmm: compact latest_archive_overview for ${ovSessionId}: ${summary.substring(0, 200)}...`,
         );
       }
       if (ctx.messages && ctx.messages.length > 0) {
@@ -1182,20 +1182,20 @@ export async function compactOpenVikingSession({
           return { role, textPreview };
         });
         logger.info(
-          `openviking: compact restored messages for ${ovSessionId}: ` +
+          `kmm: compact restored messages for ${ovSessionId}: ` +
             JSON.stringify(msgSummary),
         );
       }
     } catch (ctxErr) {
       contextFetchError = String(ctxErr);
       logger.info(
-        `openviking: compact context fetch failed for session=${ovSessionId}, ` +
+        `kmm: compact context fetch failed for session=${ovSessionId}, ` +
           `tokenBudget=${tokenBudget}, agentId=${agentId}: ${contextFetchError}`,
       );
     }
 
     logger.info(
-      `openviking: compact tokens session=${ovSessionId}, ` +
+      `kmm: compact tokens session=${ovSessionId}, ` +
         `tokensBefore=${tokensBefore}, tokensAfter=${tokensAfter ?? "unknown"}, ` +
         `latestArchiveId=${firstKeptEntryId || "none"}`,
     );
@@ -1237,7 +1237,7 @@ export async function compactOpenVikingSession({
     const errorMessage = String(err);
     if (isSessionNotFoundError(err)) {
       logger.info(
-        `openviking: compact skipped because OV session does not exist ` +
+        `kmm: compact skipped because OV session does not exist ` +
           `(session=${ovSessionId}, agentId=${agentId})`,
       );
       diag("compact_result", ovSessionId, {
@@ -1252,7 +1252,7 @@ export async function compactOpenVikingSession({
         reason: "session_not_found",
       };
     }
-    logger.warn?.(`openviking: compact commit failed for session=${ovSessionId}: ${errorMessage}`);
+    logger.warn?.(`kmm: compact commit failed for session=${ovSessionId}: ${errorMessage}`);
     diag("compact_error", ovSessionId, {
       error: errorMessage,
     });

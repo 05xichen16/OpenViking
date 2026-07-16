@@ -31,7 +31,7 @@ export function createOpenVikingRuntimeState(options: {
     path: cfg.runtimeQueryConfigPath || undefined,
   });
   void queryConfigStore.load().catch((err) => {
-    logger.warn?.(`openviking: failed to load runtime query config: ${String(err)}`);
+    logger.warn?.(`kmm: failed to load runtime query config: ${String(err)}`);
   });
 
   const traceRecorder = cfg.traceRecall

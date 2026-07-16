@@ -38,7 +38,7 @@ def test_object_keys_and_public_urls():
     assert module.release_paths("2026.6.3", publish_latest=False) == ["2026.6.3"]
     assert module.release_paths("2026.6.3", publish_latest=True) == ["2026.6.3", "latest"]
     assert module.object_key("2026.6.3", "install.sh") == "2026.6.3/install.sh"
-    assert module.object_key("latest", "openviking.tgz") == "latest/openviking.tgz"
+    assert module.object_key("latest", "kmm.tgz") == "latest/kmm.tgz"
     assert module.object_key("latest", "manifest.json") == "latest/manifest.json"
     assert re.match(
         r"^https://arkclaw-ov-cn-guangzhou\.tos-cn-guangzhou\.ivolces\.com/\d{4}\.\d{1,2}\.\d{1,2}/install\.sh$",
@@ -67,7 +67,7 @@ def test_release_dir_can_be_specified_and_is_not_hardcoded():
 def test_upload_sets_public_read_acl_and_content_types(tmp_path):
     module = load_module()
     install = tmp_path / "install.sh"
-    tgz = tmp_path / "openviking.tgz"
+    tgz = tmp_path / "kmm.tgz"
     manifest = tmp_path / "manifest.json"
     install.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
     tgz.write_bytes(b"tgz")
@@ -100,7 +100,7 @@ def test_upload_sets_public_read_acl_and_content_types(tmp_path):
     assert uploads[0]["key"] == "2026.6.3/install.sh"
     assert uploads[0]["acl"] == module.tos.ACLType.ACL_Public_Read
     assert uploads[0]["content_type"] == "text/x-shellscript; charset=utf-8"
-    assert uploads[1]["key"] == "2026.6.3/openviking.tgz"
+    assert uploads[1]["key"] == "2026.6.3/kmm.tgz"
     assert uploads[1]["acl"] == module.tos.ACLType.ACL_Public_Read
     assert uploads[1]["content_type"] == "application/gzip"
     assert uploads[2]["key"] == "2026.6.3/manifest.json"
@@ -109,7 +109,7 @@ def test_upload_sets_public_read_acl_and_content_types(tmp_path):
     acl_calls = [call for call in calls if "acl_key" in call]
     assert [call["acl_key"] for call in acl_calls] == [
         "2026.6.3/install.sh",
-        "2026.6.3/openviking.tgz",
+        "2026.6.3/kmm.tgz",
         "2026.6.3/manifest.json",
     ]
 
@@ -154,7 +154,7 @@ def test_ensure_bucket_dry_run_does_not_create_bucket():
 def test_publish_latest_requires_explicit_flag(tmp_path):
     module = load_module()
     install = tmp_path / "install.sh"
-    tgz = tmp_path / "openviking.tgz"
+    tgz = tmp_path / "kmm.tgz"
     manifest = tmp_path / "manifest.json"
     install.write_text("#!/usr/bin/env bash\n", encoding="utf-8")
     tgz.write_bytes(b"tgz")
@@ -183,10 +183,10 @@ def test_publish_latest_requires_explicit_flag(tmp_path):
     uploads = [call for call in calls if "file_path" in call]
     assert [upload["key"] for upload in uploads] == [
         "2026.6.3/install.sh",
-        "2026.6.3/openviking.tgz",
+        "2026.6.3/kmm.tgz",
         "2026.6.3/manifest.json",
         "latest/install.sh",
-        "latest/openviking.tgz",
+        "latest/kmm.tgz",
         "latest/manifest.json",
     ]
 

@@ -27,8 +27,8 @@ const installManifest = JSON.parse(
   compatibility?: {
     minOpenclawVersion?: string;
     recommendedOpenclawVersion?: string;
-    minOpenvikingVersion?: string;
-    recommendedOpenvikingVersion?: string;
+    minKmmVersion?: string;
+    recommendedKmmVersion?: string;
   };
   files?: { required?: string[]; optional?: string[] };
   npm?: {
@@ -134,8 +134,8 @@ describe("OpenClaw 5.5 package runtime contract", () => {
     expect(installManifest.compatibility).toMatchObject({
       minOpenclawVersion: "2026.4.8",
       recommendedOpenclawVersion: "2026.6.6",
-      minOpenvikingVersion: "0.4.1",
-      recommendedOpenvikingVersion: "0.4.1",
+      minKmmVersion: "0.4.1",
+      recommendedKmmVersion: "0.4.1",
     });
     // package.json version and install-manifest pluginVersion must stay identical.
     expect(installManifest.pluginVersion).toBe(packageJson.version);

@@ -260,7 +260,7 @@ describe("OpenVikingClient resource and skill import", () => {
 
     const client = new OpenVikingClient("http://127.0.0.1:1933", "", "agent", 5000, "", "", undefined, false, true, { transport });
     await expect(client.addResource({ pathOrUrl: "https://example.com/bad" })).rejects.toThrow(
-      "OpenViking request failed [INVALID_ARGUMENT]: bad import",
+      "KMM request failed [INVALID_ARGUMENT]: bad import",
     );
   });
 

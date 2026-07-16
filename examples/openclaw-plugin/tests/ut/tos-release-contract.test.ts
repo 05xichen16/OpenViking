@@ -19,7 +19,7 @@ function resolveReleaseVersion(args: string[]): { version: string; tag: string; 
 describe("TOS release and single installer contract", () => {
   it("generates a release manifest and checksums for artifacts", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "openviking-manifest-"));
-    const packagePath = join(tempDir, "openviking.tgz");
+    const packagePath = join(tempDir, "kmm.tgz");
     const installerPath = join(tempDir, "install.sh");
     const notesPath = join(tempDir, "release-notes.md");
     const manifestPath = join(tempDir, "manifest.json");
@@ -56,17 +56,17 @@ describe("TOS release and single installer contract", () => {
 
     expect(manifest.schemaVersion).toBe("1.0");
     expect(manifest.environment).toBe("prod");
-    expect(manifest.plugin.id).toBe("openviking");
+    expect(manifest.plugin.id).toBe("kmm");
     expect(manifest.release.version).toBe("2026.5.8");
     expect(manifest.release.tag).toBe("v2026.5.8");
     expect(manifest.release.gitShortHash).toBe("0123456");
-    expect(manifest.tos.bucket).toBe("arkclaw-openviking");
+    expect(manifest.tos.bucket).toBe("arkclaw-kmm");
     expect(manifest.artifacts.map((artifact: { name: string }) => artifact.name)).toEqual([
-      "openviking.tgz",
+      "kmm.tgz",
       "install.sh",
     ]);
     expect(manifest.artifacts.every((artifact: { sha256: string; size: number }) => artifact.sha256.length === 64 && artifact.size > 0)).toBe(true);
-    expect(checksums).toContain("openviking.tgz");
+    expect(checksums).toContain("kmm.tgz");
     expect(checksums).toContain("install.sh");
 
     // The release manifest must derive its compatibility floors/recommended
@@ -75,8 +75,8 @@ describe("TOS release and single installer contract", () => {
     expect(manifest.compatibility).toMatchObject({
       minOpenclawVersion: installManifest.compatibility.minOpenclawVersion,
       recommendedOpenclawVersion: installManifest.compatibility.recommendedOpenclawVersion,
-      minOpenvikingVersion: installManifest.compatibility.minOpenvikingVersion,
-      recommendedOpenvikingVersion: installManifest.compatibility.recommendedOpenvikingVersion,
+      minKmmVersion: installManifest.compatibility.minKmmVersion,
+      recommendedKmmVersion: installManifest.compatibility.recommendedKmmVersion,
     });
     expect(manifest.compatibility.minGatewayVersion).toBe(installManifest.compatibility.minOpenclawVersion);
     expect(manifest.compatibility.minNodeVersion).toBe("22.0.0");
@@ -84,7 +84,7 @@ describe("TOS release and single installer contract", () => {
 
   it("generates environment-specific manifest metadata for non-prod releases", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "openviking-manifest-stg-"));
-    const packagePath = join(tempDir, "openviking.tgz");
+    const packagePath = join(tempDir, "kmm.tgz");
     const installerPath = join(tempDir, "install.sh");
     const manifestPath = join(tempDir, "manifest.json");
     const checksumsPath = join(tempDir, "checksums.sha256");
@@ -107,7 +107,7 @@ describe("TOS release and single installer contract", () => {
       "--artifact",
       installerPath,
       "--bucket",
-      "arkclaw-openviking-stg",
+      "arkclaw-kmm-stg",
       "--region",
       "cn-shanghai",
       "--endpoint",
@@ -123,7 +123,7 @@ describe("TOS release and single installer contract", () => {
 
     expect(manifest.environment).toBe("stg");
     expect(manifest.tos).toMatchObject({
-      bucket: "arkclaw-openviking-stg",
+      bucket: "arkclaw-kmm-stg",
       region: "cn-shanghai",
       endpoint: "tos-cn-shanghai.volces.com",
     });
@@ -228,7 +228,7 @@ describe("TOS release and single installer contract", () => {
 
     expect(installScript).toContain("requires bash");
     expect(installScript).toContain("Usage: bash install.sh [options]");
-    expect(installScript).toContain("<tos-base-url>/latest/openviking.tgz");
+    expect(installScript).toContain("<tos-base-url>/latest/kmm.tgz");
     expect(installScript).toContain("DEFAULT_TOS_BASE_URL=\"\"");
     expect(installScript).toContain("INSTALL_TOS_BASE_URL=\"${INSTALL_TOS_BASE_URL:-$DEFAULT_TOS_BASE_URL}\"");
     expect(installScript).toContain("RELEASE_PATH=\"${INSTALL_RELEASE_PATH:-latest}\"");
@@ -236,16 +236,16 @@ describe("TOS release and single installer contract", () => {
     expect(installScript).toContain("--date <date>");
     expect(installScript).toContain("--manifest-url <url>");
     expect(installScript).toContain("--verify-only");
-    expect(installScript).toContain("openviking.env");
-    expect(installScript).toContain("openclaw openviking setup");
+    expect(installScript).toContain("kmm.env");
+    expect(installScript).toContain("openclaw kmm setup");
   });
 
   it("does not run OpenViking setup during verify-only mode", () => {
     execFileSync("bash", [join(rootDir, "scripts/install.sh"), "--source", "existing", "--verify-only"], {
       env: {
         ...process.env,
-        OPENVIKING_API_KEY: "test-secret-key",
-        OPENVIKING_BASE_URL: "",
+        KMM_API_KEY: "test-secret-key",
+        KMM_BASE_URL: "",
       },
     });
   });
@@ -255,7 +255,7 @@ describe("TOS release and single installer contract", () => {
 
     expect(wrapper).toContain("Compatibility wrapper");
     expect(wrapper).toContain("exec \"$SCRIPT_DIR/install.sh\"");
-    expect(wrapper).not.toContain("openclaw openviking setup");
-    expect(wrapper).not.toContain("openclaw plugins install clawhub:@openviking/openclaw-plugin");
+    expect(wrapper).not.toContain("openclaw kmm setup");
+    expect(wrapper).not.toContain("openclaw plugins install clawhub:@kmm/openclaw-plugin");
   });
 });

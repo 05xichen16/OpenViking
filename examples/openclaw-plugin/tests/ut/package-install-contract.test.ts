@@ -23,7 +23,7 @@ describe("OpenClaw plugin package and install contract", () => {
     const installManifest = readJson("install-manifest.json");
 
     expect(installManifest.plugin).toMatchObject({
-      id: "openviking",
+      id: "kmm",
       kind: "context-engine",
       slot: "contextEngine",
     });
@@ -102,8 +102,8 @@ describe("OpenClaw plugin package and install contract", () => {
     expect(installHelper).toContain(`id: "${installManifest.plugin.id}"`);
     expect(installHelper).toContain(`kind: "${installManifest.plugin.kind}"`);
     expect(installHelper).toContain(`slot: "${installManifest.plugin.slot}"`);
-    expect(installHelper).toContain("OPENVIKING_PEER_ROLE");
-    expect(installHelper).toContain("OPENVIKING_PEER_PREFIX");
-    expect(installHelper).not.toContain("OPENVIKING_AGENT_PREFIX");
+    expect(installHelper).toContain("KMM_PEER_ROLE");
+    expect(installHelper).toContain("KMM_PEER_PREFIX");
+    expect(installHelper).not.toContain("KMM_AGENT_PREFIX");
   });
 });

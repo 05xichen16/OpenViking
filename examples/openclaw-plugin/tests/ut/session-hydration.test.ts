@@ -163,7 +163,7 @@ describe("openviking session hydration", () => {
     expect(flat).toContain("hello again");
     expect(flat).toContain("welcome back");
     // No summary message is injected when verbatim messages exist.
-    expect(flat).not.toContain("restored from OpenViking");
+    expect(flat).not.toContain("restored from KMM");
     const assistant = msgs.find((m) => (m.message as { role?: string }).role === "assistant");
     expect(assistant?.message).toMatchObject({ role: "assistant", provider: "test-provider", model: "test-model", stopReason: "stop" });
     expect(typeof (assistant?.message as { timestamp?: unknown }).timestamp).toBe("number");
@@ -250,7 +250,7 @@ describe("openviking session hydration", () => {
     const msgs = entries.slice(1) as TranscriptMessageEntry[];
     expect(msgs).toHaveLength(1);
     const body = JSON.stringify(msgs[0]!.message);
-    expect(body).toContain("Earlier conversation — restored from OpenViking");
+    expect(body).toContain("Earlier conversation — restored from KMM");
     expect(body).toContain("We set up the repo.");
   });
 

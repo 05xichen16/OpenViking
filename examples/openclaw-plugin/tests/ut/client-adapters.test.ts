@@ -49,7 +49,7 @@ describe("OpenVikingClient adapter seams", () => {
     const transport = vi.fn<HttpTransport>().mockResolvedValue(errorResponse("bad import"));
     const client = new OpenVikingClient("http://127.0.0.1:1933", "", "agent", 5_000, "", "", undefined, { transport });
 
-    await expect(client.healthCheck()).rejects.toThrow("OpenViking request failed [INVALID_ARGUMENT]: bad import");
+    await expect(client.healthCheck()).rejects.toThrow("KMM request failed [INVALID_ARGUMENT]: bad import");
   });
 
   it("uses injected resource packager so remote URLs do not trigger local packaging", async () => {

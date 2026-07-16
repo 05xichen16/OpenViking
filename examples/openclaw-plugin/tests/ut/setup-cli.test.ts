@@ -172,7 +172,7 @@ describe("activateContextEngineSlot", () => {
 
   it("no-ops when slot already set to openviking", () => {
     const p = writeTmpConfig({
-      plugins: { slots: { contextEngine: "openviking" } },
+      plugins: { slots: { contextEngine: "kmm" } },
     });
     const result = activateContextEngineSlot(p);
     expect(result.activated).toBe(false);
@@ -232,7 +232,7 @@ describe("ensureInstallRecord", () => {
     const plugins: Record<string, unknown> = {};
     ensureInstallRecord(plugins);
     expect(plugins.installs).toBeUndefined();
-    expect(plugins.allow).toEqual(["openviking"]);
+    expect(plugins.allow).toEqual(["kmm"]);
   });
 
   it("preserves unrelated installs and allow entries", () => {
@@ -245,18 +245,18 @@ describe("ensureInstallRecord", () => {
       source: "npm",
       spec: "@mem0/openclaw-mem0",
     });
-    expect((plugins.installs as Record<string, unknown>).openviking).toBeUndefined();
-    expect(plugins.allow).toEqual(["mem0", "openviking"]);
+    expect((plugins.installs as Record<string, unknown>).kmm).toBeUndefined();
+    expect(plugins.allow).toEqual(["mem0", "kmm"]);
   });
 
   it("removes stale openviking install records and does not duplicate allow entries", () => {
     const plugins: Record<string, unknown> = {
-      installs: { openviking: { npm: "@openclaw/openviking" } },
-      allow: ["openviking"],
+      installs: { kmm: { npm: "@openclaw/openviking" } },
+      allow: ["kmm"],
     };
     ensureInstallRecord(plugins);
-    expect((plugins.installs as Record<string, unknown>).openviking).toBeUndefined();
-    expect((plugins.allow as string[]).filter((x) => x === "openviking")).toHaveLength(1);
+    expect((plugins.installs as Record<string, unknown>).kmm).toBeUndefined();
+    expect((plugins.allow as string[]).filter((x) => x === "kmm")).toHaveLength(1);
   });
 });
 

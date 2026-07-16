@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * OpenClaw OpenViking plugin installer (remote OpenViking server — does not install Python/OpenViking server).
+ * OpenClaw KMM plugin installer (remote KMM server — does not install Python/KMM server).
  *
  * One-liner (after npm publish; use package name + bin name):
- *   npx -p openclaw-openviking-setup-helper ov-install [ --base-url URL ] [ --api-key KEY ] [ --zh ] [ --workdir PATH ]
+ *   npx -p openclaw-kmm-setup-helper kmm-install [ --base-url URL ] [ --api-key KEY ] [ --zh ] [ --workdir PATH ]
  * Or install globally then run:
- *   npm i -g openclaw-openviking-setup-helper
- *   ov-install
- *   openclaw-openviking-install
+ *   npm i -g openclaw-kmm-setup-helper
+ *   kmm-install
+ *   openclaw-kmm-install
  *
  * Direct run:
  *   node install.js [ --base-url URL ] [ --api-key KEY ] [ --zh ] [ --workdir PATH ] [ --upgrade-plugin ]
@@ -15,7 +15,7 @@
  *
  * Environment variables:
  *   PLUGIN_SOURCE, PLUGIN_NPM_PACKAGE, REPO, PLUGIN_VERSION (or BRANCH),
- *   OPENVIKING_BASE_URL, OPENVIKING_API_KEY, SKIP_OPENCLAW, NPM_REGISTRY
+ *   KMM_BASE_URL, KMM_API_KEY, SKIP_OPENCLAW, NPM_REGISTRY
  */
 
 import { spawn } from "node:child_process";
@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let REPO = process.env.REPO || "volcengine/OpenViking";
-const DEFAULT_PLUGIN_NPM_PACKAGE = "@openviking/openclaw-plugin";
+const DEFAULT_PLUGIN_NPM_PACKAGE = "@kmm/openclaw-plugin";
 let pluginNpmPackage = (process.env.PLUGIN_NPM_PACKAGE || DEFAULT_PLUGIN_NPM_PACKAGE).trim();
 let pluginSource = (process.env.PLUGIN_SOURCE || "npm").trim().toLowerCase();
 let pluginSourceExplicit = Boolean(process.env.PLUGIN_SOURCE);
@@ -62,7 +62,7 @@ const FALLBACK_LEGACY = {
 // Must match examples/openclaw-plugin/install-manifest.json (npm only installs package deps, not these .ts files).
 const FALLBACK_CURRENT = {
   dir: "openclaw-plugin",
-  id: "openviking",
+  id: "kmm",
   kind: "context-engine",
   slot: "contextEngine",
   minOpenclawVersion: "2026.4.8",
@@ -119,15 +119,15 @@ let forceSlotExplicit = false;
 let allowOfflineExplicit = false;
 
 const selectedMode = "remote";
-const baseUrlFromEnv = !!process.env.OPENVIKING_BASE_URL;
-let remoteBaseUrl = (process.env.OPENVIKING_BASE_URL || "http://127.0.0.1:1933").trim();
-let remoteApiKey = (process.env.OPENVIKING_API_KEY || "").trim();
-let remotePeerRole = (process.env.OPENVIKING_PEER_ROLE || "").trim().toLowerCase();
-let remotePeerPrefix = (process.env.OPENVIKING_PEER_PREFIX || "").trim();
-let peerRoleExplicit = !!process.env.OPENVIKING_PEER_ROLE;
+const baseUrlFromEnv = !!process.env.KMM_BASE_URL;
+let remoteBaseUrl = (process.env.KMM_BASE_URL || "http://127.0.0.1:1933").trim();
+let remoteApiKey = (process.env.KMM_API_KEY || "").trim();
+let remotePeerRole = (process.env.KMM_PEER_ROLE || "").trim().toLowerCase();
+let remotePeerPrefix = (process.env.KMM_PEER_PREFIX || "").trim();
+let peerRoleExplicit = !!process.env.KMM_PEER_ROLE;
 if (!remotePeerRole) remotePeerRole = "assistant";
-let remoteAccountId = (process.env.OPENVIKING_ACCOUNT_ID || "").trim();
-let remoteUserId = (process.env.OPENVIKING_USER_ID || "").trim();
+let remoteAccountId = (process.env.KMM_ACCOUNT_ID || "").trim();
+let remoteUserId = (process.env.KMM_USER_ID || "").trim();
 let baseUrlExplicit = baseUrlFromEnv;
 let upgradeRuntimeConfig = null;
 let installedUpgradeState = null;
@@ -361,7 +361,7 @@ function printHelp() {
   console.log("Options:");
   console.log("  --plugin-source=npm|github");
   console.log("                           Plugin download source (default: npm)");
-  console.log("  --plugin-package=NAME    npm plugin package (default: @openviking/openclaw-plugin)");
+  console.log("  --plugin-package=NAME    npm plugin package (default: @kmm/openclaw-plugin)");
   console.log("  --github-repo=OWNER/REPO GitHub repository (implies --plugin-source=github unless source is set)");
   console.log("  --plugin-version=VERSION Plugin version (npm version/tag or Git tag; default: npm latest)");
   console.log("  --workdir PATH           OpenClaw config directory (default: ~/.openclaw)");
@@ -370,15 +370,15 @@ function printHelp() {
   console.log("                           Upgrade only the plugin to the requested --plugin-version; keeps existing plugin runtime config");
   console.log("  --rollback, --rollback-last-upgrade");
   console.log("                           Roll back the last plugin upgrade using the saved audit/backup files");
-  console.log("  --uninstall, --remove    Uninstall OpenViking plugin from OpenClaw (backup config, remove plugin entries)");
-  console.log("  --base-url=URL           OpenViking server URL (default: $OPENVIKING_BASE_URL or http://127.0.0.1:1933)");
-  console.log("  --api-key=KEY            OpenViking API key (default: $OPENVIKING_API_KEY)");
-  console.log("  --peer-role=ROLE         Peer role: none, assistant, or person (default: $OPENVIKING_PEER_ROLE or assistant)");
-  console.log("  --peer-prefix=PREFIX     Prefix for assistant peer_id values (default: $OPENVIKING_PEER_PREFIX)");
-  console.log("  --account-id=ID          Account ID for root API key (default: $OPENVIKING_ACCOUNT_ID)");
-  console.log("  --user-id=ID             User ID for root API key (default: $OPENVIKING_USER_ID)");
+  console.log("  --uninstall, --remove    Uninstall KMM plugin from OpenClaw (backup config, remove plugin entries)");
+  console.log("  --base-url=URL           KMM server URL (default: $KMM_BASE_URL or http://127.0.0.1:1933)");
+  console.log("  --api-key=KEY            KMM API key (default: $KMM_API_KEY)");
+  console.log("  --peer-role=ROLE         Peer role: none, assistant, or person (default: $KMM_PEER_ROLE or assistant)");
+  console.log("  --peer-prefix=PREFIX     Prefix for assistant peer_id values (default: $KMM_PEER_PREFIX)");
+  console.log("  --account-id=ID          Account ID for root API key (default: $KMM_ACCOUNT_ID)");
+  console.log("  --user-id=ID             User ID for root API key (default: $KMM_USER_ID)");
   console.log("  --force-slot             Explicitly replace an existing contextEngine slot owner");
-  console.log("  --allow-offline          Explicitly save config when the OpenViking server is unreachable");
+  console.log("  --allow-offline          Explicitly save config when the KMM server is unreachable");
   console.log("  --zh                     Chinese prompts");
   console.log("  -h, --help               This help");
   console.log("");
@@ -415,7 +415,7 @@ function formatCliArg(value) {
 }
 
 function getLegacyInstallCommandHint() {
-  const override = process.env.OPENVIKING_INSTALL_LEGACY_HINT?.trim();
+  const override = process.env.KMM_INSTALL_LEGACY_HINT?.trim();
   if (override) {
     return override;
   }
@@ -436,7 +436,7 @@ function getLegacyInstallCommandHint() {
     return `node install.js ${args.join(" ")}`;
   }
 
-  return `ov-install ${args.join(" ")}`;
+  return `kmm-install ${args.join(" ")}`;
 }
 
 function tr(en, zh) {
@@ -620,7 +620,7 @@ async function selectWorkdir() {
 
 async function collectRemoteConfig() {
   if (nonInteractive) return;
-  remoteBaseUrl = await question(tr("OpenViking server URL", "OpenViking 服务器地址"), remoteBaseUrl);
+  remoteBaseUrl = await question(tr("KMM server URL", "KMM 服务器地址"), remoteBaseUrl);
   remoteApiKey = await question(tr("API Key (optional)", "API Key（可选）"), remoteApiKey);
   remotePeerRole = await questionPeerRole(remotePeerRole);
   remotePeerPrefix = remotePeerRole === "assistant"
@@ -968,7 +968,7 @@ async function resolveDefaultPluginVersion() {
     const response = await fetch(apiUrl, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "openviking-setup-helper",
+        "User-Agent": "kmm-setup-helper",
         "X-GitHub-Api-Version": "2022-11-28",
       },
       signal: controller.signal,
@@ -1035,7 +1035,7 @@ function applyManifestConfig(manifestData) {
   resolvedPluginKind = manifestData.plugin?.kind || "";
   resolvedPluginSlot = manifestData.plugin?.slot || "";
   resolvedMinOpenclawVersion = manifestData.compatibility?.minOpenclawVersion || "";
-  resolvedMinOpenvikingVersion = manifestData.compatibility?.minOpenvikingVersion || "";
+  resolvedMinOpenvikingVersion = manifestData.compatibility?.minKmmVersion || "";
   resolvedPluginReleaseId = manifestData.pluginVersion || manifestData.release?.id || "";
   const npmConfig = manifestData.npm && typeof manifestData.npm === "object"
     ? manifestData.npm
@@ -1114,7 +1114,7 @@ async function resolvePluginConfigFromNpm() {
     ));
   }
 
-  PLUGIN_DEST = join(OPENCLAW_DIR, "extensions", resolvedPluginId || "openviking");
+  PLUGIN_DEST = join(OPENCLAW_DIR, "extensions", resolvedPluginId || "kmm");
   info(tr(`Plugin: ${resolvedPluginId} (${resolvedPluginKind})`, `Plugin: ${resolvedPluginId} (${resolvedPluginKind})`));
 }
 
@@ -1186,7 +1186,7 @@ async function resolvePluginConfig() {
     resolvedPluginKind = manifestData.plugin?.kind || "";
     resolvedPluginSlot = manifestData.plugin?.slot || "";
     resolvedMinOpenclawVersion = manifestData.compatibility?.minOpenclawVersion || "";
-    resolvedMinOpenvikingVersion = manifestData.compatibility?.minOpenvikingVersion || "";
+    resolvedMinOpenvikingVersion = manifestData.compatibility?.minKmmVersion || "";
     resolvedPluginReleaseId = manifestData.pluginVersion || manifestData.release?.id || "";
     const npmConfig = manifestData.npm && typeof manifestData.npm === "object"
       ? manifestData.npm
@@ -1214,7 +1214,7 @@ async function resolvePluginConfig() {
         const pkg = JSON.parse(pkgJson);
         const pkgName = pkg.name || "";
         resolvedPluginReleaseId = pkg.version || "";
-        const currentPackageNames = new Set(["@openviking/openclaw-plugin", "@openclaw/openviking"]);
+        const currentPackageNames = new Set(["@kmm/openclaw-plugin", "@openclaw/kmm"]);
         if (pkgName && !currentPackageNames.has(pkgName)) {
           fallbackKey = "legacy";
           info(tr(`Detected legacy plugin by package name: ${pkgName}`, `通过 package.json 名称检测到旧版插件: ${pkgName}`));
@@ -1327,7 +1327,7 @@ function getInstallStatePathForPlugin(pluginId) {
 }
 
 async function printCurrentVersionInfo() {
-  const state = await readJsonFileIfExists(getInstallStatePathForPlugin("openviking"));
+  const state = await readJsonFileIfExists(getInstallStatePathForPlugin("kmm"));
   const pluginRequestedRef = state?.requestedRef || "";
   const pluginReleaseId = state?.releaseId || "";
   const pluginInstalledAt = state?.installedAt || "";
@@ -1340,14 +1340,14 @@ async function printCurrentVersionInfo() {
   if (pluginRequestedRef && pluginReleaseId && pluginRequestedRef !== pluginReleaseId) {
     console.log(`Plugin requested ref: ${pluginRequestedRef}`);
   }
-  console.log(tr("OpenViking server: not installed by this tool (use a remote URL in plugin config)", "OpenViking 服务端：本工具不安装；请在插件配置中填写远程服务地址"));
+  console.log(tr("KMM server: not installed by this tool (use a remote URL in plugin config)", "KMM 服务端：本工具不安装；请在插件配置中填写远程服务地址"));
   if (pluginInstalledAt) {
     console.log(`Installed at: ${pluginInstalledAt}`);
   }
 }
 
 function getUpgradeAuditDir() {
-  return join(OPENCLAW_DIR, ".openviking-upgrade-backup");
+  return join(OPENCLAW_DIR, ".kmm-upgrade-backup");
 }
 
 function getUpgradeAuditPath() {
@@ -1433,7 +1433,7 @@ function formatInstalledStateLabel(installedState) {
 }
 
 function formatTargetVersionLabel() {
-  const base = `${resolvedPluginId || "openviking"}@${PLUGIN_VERSION}`;
+  const base = `${resolvedPluginId || "kmm"}@${PLUGIN_VERSION}`;
   if (resolvedPluginReleaseId && resolvedPluginReleaseId !== PLUGIN_VERSION) {
     return `${base} (${resolvedPluginReleaseId})`;
   }
@@ -1481,10 +1481,10 @@ async function writeUpgradeAuditFile(data) {
 }
 
 async function writeInstallStateFile({ operation, fromVersion, configBackupPath, pluginBackups }) {
-  const installStatePath = getInstallStatePathForPlugin(resolvedPluginId || "openviking");
+  const installStatePath = getInstallStatePathForPlugin(resolvedPluginId || "kmm");
   const state = {
-    pluginId: resolvedPluginId || "openviking",
-    generation: getPluginVariantById(resolvedPluginId || "openviking")?.generation || "unknown",
+    pluginId: resolvedPluginId || "kmm",
+    generation: getPluginVariantById(resolvedPluginId || "kmm")?.generation || "unknown",
     requestedRef: PLUGIN_VERSION,
     releaseId: resolvedPluginReleaseId || "",
     operation,
@@ -1725,12 +1725,12 @@ async function cleanupInstalledPluginConfig(installedState) {
   }
 
   if (!changed) {
-    info(tr("No OpenViking plugin config changes were required", "无需修改 OpenViking 插件配置"));
+    info(tr("No KMM plugin config changes were required", "无需修改 KMM 插件配置"));
     return;
   }
 
   await writeFile(installedState.configPath, `${JSON.stringify(nextConfig, null, 2)}\n`, "utf8");
-  info(tr("Cleaned existing OpenViking plugin config only", "已仅清理 OpenViking 自身插件配置"));
+  info(tr("Cleaned existing KMM plugin config only", "已仅清理 KMM 自身插件配置"));
 }
 
 async function prepareStrongPluginUpgrade() {
@@ -1738,8 +1738,8 @@ async function prepareStrongPluginUpgrade() {
   if (installedState.generation === "none") {
     err(
       tr(
-        "Plugin upgrade mode requires an existing OpenViking plugin entry in openclaw.json.",
-        "插件升级模式要求 openclaw.json 中已经存在 OpenViking 插件记录。",
+        "Plugin upgrade mode requires an existing KMM plugin entry in openclaw.json.",
+        "插件升级模式要求 openclaw.json 中已经存在 KMM 插件记录。",
       ),
     );
     process.exit(1);
@@ -1751,8 +1751,8 @@ async function prepareStrongPluginUpgrade() {
   const toVersion = formatTargetVersionLabel();
   info(
     tr(
-      `Detected installed OpenViking plugin state: ${installedState.generation}`,
-      `检测到已安装 OpenViking 插件状态: ${installedState.generation}`,
+      `Detected installed KMM plugin state: ${installedState.generation}`,
+      `检测到已安装 KMM 插件状态: ${installedState.generation}`,
     ),
   );
   remoteBaseUrl = upgradeRuntimeConfig.baseUrl || remoteBaseUrl;
@@ -1761,7 +1761,7 @@ async function prepareStrongPluginUpgrade() {
   remotePeerPrefix = upgradeRuntimeConfig.peer_prefix || "";
   remoteAccountId = upgradeRuntimeConfig.accountId || "";
   remoteUserId = upgradeRuntimeConfig.userId || "";
-  info(tr(`Upgrade runtime mode: ${selectedMode} (remote OpenViking server)`, `升级运行模式: ${selectedMode}（远程 OpenViking 服务）`));
+  info(tr(`Upgrade runtime mode: ${selectedMode} (remote KMM server)`, `升级运行模式: ${selectedMode}（远程 KMM 服务）`));
 
   info(tr(`Upgrade path: ${fromVersion} -> ${toVersion}`, `升级路径: ${fromVersion} -> ${toVersion}`));
 
@@ -1872,7 +1872,7 @@ async function fetchGitHubDirectoryEntries(pluginDir, dirName, required) {
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, { headers: { "User-Agent": "openviking-setup-helper" } });
+      const response = await fetch(url, { headers: { "User-Agent": "kmm-setup-helper" } });
       lastStatus = response.status;
       if (response.ok) {
         const json = await response.json();
@@ -2113,7 +2113,7 @@ async function downloadPlugin(destDir) {
 }
 
 async function createPluginStagingDir() {
-  const pluginId = resolvedPluginId || "openviking";
+  const pluginId = resolvedPluginId || "kmm";
   const extensionsDir = join(OPENCLAW_DIR, "extensions");
   await mkdir(extensionsDir, { recursive: true });
   const stagingPrefix = `.${pluginId}.staging-`;
@@ -2157,7 +2157,7 @@ async function deployPluginFromRemote() {
 /** Same as INSTALL*.md manual cleanup: stale entries block `plugins.slots.*` validation after reinstall. */
 function resolvedPluginSlotFallback() {
   if (resolvedPluginId === "memory-openviking") return "none";
-  if (resolvedPluginId === "openviking") return "legacy";
+  if (resolvedPluginId === "kmm") return "legacy";
   return "none";
 }
 
@@ -2466,7 +2466,7 @@ async function configureOpenClawPlugin({
     return { runtimeConfigOk: true };
   }
 
-  // Current (context-engine) plugins: delegate to `openclaw openviking setup --json`
+  // Current (context-engine) plugins: delegate to `openclaw kmm setup --json`
   // This reuses the same validation logic (health check, version compat, root key
   // detection, slot protection, ensureInstallRecord) from commands/setup.ts
   const effectiveRuntimeConfig = runtimeConfig || {
@@ -2491,7 +2491,7 @@ async function configureOpenClawPlugin({
   let setupResult = null;
   let parsed = null;
   const runSetupJson = async (extraArgs = []) => {
-    const setupArgs = ["openviking", "setup"];
+    const setupArgs = ["kmm", "setup"];
     setupArgs.push("--base-url", effectiveRuntimeConfig.baseUrl || remoteBaseUrl);
     setupArgs.push("--json");
     if (effectiveRuntimeConfig.apiKey) {
@@ -2526,8 +2526,8 @@ async function configureOpenClawPlugin({
 
   if (setupJsonSupported) {
     info(tr(
-      "Delegating configuration to: openclaw openviking setup --json",
-      "委托配置给: openclaw openviking setup --json",
+      "Delegating configuration to: openclaw kmm setup --json",
+      "委托配置给: openclaw kmm setup --json",
     ));
 
     ({ result: setupResult, parsed } = await runSetupJson());
@@ -2542,8 +2542,8 @@ async function configureOpenClawPlugin({
     if (parsed.action === "slot_blocked" && !forceSlotExplicit) {
       const answer = await question(
         tr(
-          `contextEngine slot is owned by "${parsed.slot?.previousOwner}". Replace it with OpenViking? (y/N)`,
-          `contextEngine slot is owned by "${parsed.slot?.previousOwner}". Replace it with OpenViking? (y/N)`,
+          `contextEngine slot is owned by "${parsed.slot?.previousOwner}". Replace it with KMM? (y/N)`,
+          `contextEngine slot is owned by "${parsed.slot?.previousOwner}". Replace it with KMM? (y/N)`,
         ),
       );
       if (isYes(answer)) {
@@ -2556,8 +2556,8 @@ async function configureOpenClawPlugin({
     ) {
       const answer = await question(
         tr(
-          "OpenViking server is unreachable. Save config offline anyway? (y/N)",
-          "OpenViking server is unreachable. Save config offline anyway? (y/N)",
+          "KMM server is unreachable. Save config offline anyway? (y/N)",
+          "KMM server is unreachable. Save config offline anyway? (y/N)",
         ),
       );
       if (isYes(answer)) {
@@ -2605,8 +2605,8 @@ async function configureOpenClawPlugin({
     }
   } else if (setupJsonSupported) {
     const setupError = setupResult
-      ? `openclaw openviking setup did not return JSON (exit code ${setupResult.code})`
-      : "openclaw openviking setup did not run";
+      ? `openclaw kmm setup did not return JSON (exit code ${setupResult.code})`
+      : "openclaw kmm setup did not run";
     err(tr(`Setup failed: ${setupError}`, `配置失败: ${setupError}`));
     return {
       runtimeConfigOk: false,
@@ -2677,8 +2677,8 @@ async function writeOpenvikingEnv() {
     batLines.push(`set "OPENCLAW_STATE_DIR=${OPENCLAW_DIR.replace(/"/g, '""')}"`);
     psLines.push(`$env:OPENCLAW_STATE_DIR = "${OPENCLAW_DIR.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`);
 
-    const batPath = join(OPENCLAW_DIR, "openviking.env.bat");
-    const ps1Path = join(OPENCLAW_DIR, "openviking.env.ps1");
+    const batPath = join(OPENCLAW_DIR, "kmm.env.bat");
+    const ps1Path = join(OPENCLAW_DIR, "kmm.env.ps1");
     await writeFile(batPath, `${batLines.join("\r\n")}\r\n`, "utf8");
     await writeFile(ps1Path, `${psLines.join("\n")}\n`, "utf8");
 
@@ -2686,7 +2686,7 @@ async function writeOpenvikingEnv() {
     return { shellPath: batPath, powershellPath: ps1Path };
   }
 
-  const envPath = join(OPENCLAW_DIR, "openviking.env");
+  const envPath = join(OPENCLAW_DIR, "kmm.env");
   await writeFile(
     envPath,
     `export OPENCLAW_STATE_DIR='${OPENCLAW_DIR.replace(/'/g, "'\"'\"'")}'\n`,
@@ -2704,8 +2704,8 @@ function wrapCommand(command, envFiles) {
 
 function getExistingEnvFiles() {
   if (IS_WIN) {
-    const batPath = join(OPENCLAW_DIR, "openviking.env.bat");
-    const ps1Path = join(OPENCLAW_DIR, "openviking.env.ps1");
+    const batPath = join(OPENCLAW_DIR, "kmm.env.bat");
+    const ps1Path = join(OPENCLAW_DIR, "kmm.env.ps1");
     if (existsSync(batPath)) {
       return { shellPath: batPath, powershellPath: existsSync(ps1Path) ? ps1Path : undefined };
     }
@@ -2715,7 +2715,7 @@ function getExistingEnvFiles() {
     return null;
   }
 
-  const envPath = join(OPENCLAW_DIR, "openviking.env");
+  const envPath = join(OPENCLAW_DIR, "kmm.env");
   return existsSync(envPath) ? { shellPath: envPath } : null;
 }
 
@@ -2735,8 +2735,8 @@ async function performUninstall() {
   const installedState = await detectInstalledPluginState();
   if (installedState.generation === "none") {
     info(tr(
-      "No OpenViking plugin entries found in openclaw.json. Nothing to uninstall.",
-      "openclaw.json 中未找到 OpenViking 插件配置，无需卸载。",
+      "No KMM plugin entries found in openclaw.json. Nothing to uninstall.",
+      "openclaw.json 中未找到 KMM 插件配置，无需卸载。",
     ));
     return;
   }
@@ -2784,10 +2784,10 @@ async function performUninstall() {
   info(tr("Step 5: Removing environment files...", "步骤 5: 移除环境文件..."));
   const envFilesToRemove = IS_WIN
     ? [
-        join(OPENCLAW_DIR, "openviking.env.bat"),
-        join(OPENCLAW_DIR, "openviking.env.ps1"),
+        join(OPENCLAW_DIR, "kmm.env.bat"),
+        join(OPENCLAW_DIR, "kmm.env.ps1"),
       ]
-    : [join(OPENCLAW_DIR, "openviking.env")];
+    : [join(OPENCLAW_DIR, "kmm.env")];
   let removedEnvCount = 0;
   for (const f of envFilesToRemove) {
     if (existsSync(f)) {
@@ -2821,7 +2821,7 @@ async function performUninstall() {
   bold("═══════════════════════════════════════════════════════════");
   console.log("");
 
-  info(tr("OpenViking server/runtime is preserved (not uninstalled).", "OpenViking 服务端/运行时已保留（未卸载）。"));
+  info(tr("KMM server/runtime is preserved (not uninstalled).", "KMM 服务端/运行时已保留（未卸载）。"));
   console.log("");
 
   info(tr("To restore the plugin configuration:", "如需恢复插件配置："));
@@ -2834,13 +2834,13 @@ async function performUninstall() {
   console.log("");
 
   info(tr("To reinstall:", "重新安装："));
-  console.log("  ov-install");
+  console.log("  kmm-install");
   console.log("");
 }
 
 async function main() {
   console.log("");
-  bold(tr("🦣 OpenClaw OpenViking plugin installer", "🦣 OpenClaw OpenViking 插件安装"));
+  bold(tr("🦣 OpenClaw KMM plugin installer", "🦣 OpenClaw KMM 插件安装"));
   console.log("");
 
   await selectWorkdir();
@@ -2947,8 +2947,8 @@ async function main() {
     )}`);
     bold(`  ${tr(`Reason: ${runtimeConfigError}`, `原因: ${runtimeConfigError}`)}`);
     bold(`  ${tr(
-      "Re-run: openclaw openviking setup --reconfigure",
-      "重新运行: openclaw openviking setup --reconfigure",
+      "Re-run: openclaw kmm setup --reconfigure",
+      "重新运行: openclaw kmm setup --reconfigure",
     )}`);
     bold("═══════════════════════════════════════════════════════════");
     console.log("");
@@ -2961,7 +2961,7 @@ async function main() {
   console.log(`  4) ${wrapCommand("openclaw status", envFiles)}`);
   console.log("");
 
-  info(tr(`OpenViking server URL (plugin): ${remoteBaseUrl}`, `OpenViking 服务地址（插件）: ${remoteBaseUrl}`));
+  info(tr(`KMM server URL (plugin): ${remoteBaseUrl}`, `KMM 服务地址（插件）: ${remoteBaseUrl}`));
   console.log("");
 }
 

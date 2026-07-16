@@ -1,18 +1,18 @@
 ---
-name: install-openviking-memory
+name: install-kmm-memory
 description: >
-  Install and configure the OpenViking long-term memory plugin for OpenClaw via natural conversation.
+  Install and configure the KMM long-term memory plugin for OpenClaw via natural conversation.
   Once installed, the plugin automatically captures important facts from chats and recalls relevant
   context before each reply (auto-capture + auto-recall, cross-session). Covers prerequisites check,
-  plugin install through OpenClaw's plugin manager first, with ov-install only as a backup path,
+  plugin install through OpenClaw's plugin manager first, with kmm-install only as a backup path,
   wizard-based configuration, slot activation,
   gateway restart, verification, plus multi-tenant root-key support, multi-instance, and uninstall.
-  Trigger when the user says any of: "install OpenViking", "set up memory", "configure memory plugin",
-  "add long-term memory", "connect to OpenViking server", "RAG", "semantic memory",
-  "帮我装 OpenViking", "配置记忆插件", "安装记忆功能", "接入 OpenViking", "我有一台 OpenViking 服务器".
+  Trigger when the user says any of: "install KMM", "set up memory", "configure memory plugin",
+  "add long-term memory", "connect to KMM server", "RAG", "semantic memory",
+  "帮我装 KMM", "配置记忆插件", "安装记忆功能", "接入 KMM", "我有一台 KMM 服务器".
   The user does NOT need to know any CLI commands — the agent runs everything and only asks for a few values.
-  This skill assumes the OpenViking server is already running. If the server is not ready, the skill
-  tells the user to contact their admin or set it up via the OpenViking docs — it does NOT install the server.
+  This skill assumes the KMM server is already running. If the server is not ready, the skill
+  tells the user to contact their admin or set it up via the KMM docs — it does NOT install the server.
 version: 2026.6.5
 metadata:
   openclaw:
@@ -21,19 +21,19 @@ metadata:
         - node
         - openclaw
   emoji: "🦣"
-  homepage: "https://github.com/volcengine/OpenViking"
+  homepage: "<your-kmm-docs-url>"
 tags:
   - install
   - setup
   - memory
-  - openviking
+  - kmm
   - rag
   - long-term-memory
 ---
 
-# Install OpenViking Memory — Agent Installation & Reference Skill
+# Install KMM Memory — Agent Installation & Reference Skill
 
-You are about to help a user install and configure the OpenViking memory plugin for OpenClaw.
+You are about to help a user install and configure the KMM memory plugin for OpenClaw.
 The user does NOT know how to use a terminal. You will collect a few values through natural conversation, then run **all** commands yourself using your shell tool.
 
 **Read this entire document before starting. Follow every step in order. Do NOT skip steps.**
@@ -43,7 +43,7 @@ This skill is split into two halves:
 - **Part 1 (STEP 0–10): Natural-language installation walkthrough.** Use this on first install or reconfigure.
 - **Part 2: Reference.** Tools, config schema, multi-tenant, multi-instance, daily ops, uninstall, error recovery. Read on demand.
 
-> **Server scope.** This skill **does not** install the OpenViking server itself. It assumes the server is already running locally on `127.0.0.1:1933` or on another machine. If the user has no server, see "Server not ready" handling in STEP 5.
+> **Server scope.** This skill **does not** install the KMM server itself. It assumes the server is already running locally on `127.0.0.1:1933` or on another machine. If the user has no server, see "Server not ready" handling in STEP 5.
 
 ---
 
@@ -84,8 +84,8 @@ openclaw --version
 
 **If `node` is missing:**
 
-> (CN) 你的系统没有安装 Node.js。OpenClaw 和 OpenViking 插件需要 Node.js >= 22。请先安装 Node.js，然后再回来找我。
-> (EN) Node.js is not installed. OpenClaw and the OpenViking plugin require Node.js >= 22. Please install Node.js first, then come back.
+> (CN) 你的系统没有安装 Node.js。OpenClaw 和 KMM 插件需要 Node.js >= 22。请先安装 Node.js，然后再回来找我。
+> (EN) Node.js is not installed. OpenClaw and the KMM plugin require Node.js >= 22. Please install Node.js first, then come back.
 
 **Stop. Do NOT continue.**
 
@@ -104,19 +104,19 @@ If both exist, proceed to STEP 3 silently.
 
 Send this message:
 
-> (CN) 好，我来帮你接入 OpenViking 长期记忆。装好之后，我会自动记住对话里的重要信息，下次聊也能回忆起来。
+> (CN) 好，我来帮你接入 KMM 长期记忆。装好之后，我会自动记住对话里的重要信息，下次聊也能回忆起来。
 >
 > 我需要 3 条信息，不知道的可以问你的管理员：
-> 1. **OpenViking 服务地址** —— 例如 `https://ov.example.com` 或 `http://192.168.1.100:1933`，本机服务可以直接说"本机"
+> 1. **KMM 服务地址** —— 例如 `https://ov.example.com` 或 `http://192.168.1.100:1933`，本机服务可以直接说"本机"
 > 2. **API Key** —— 用来鉴权；服务没开认证可以说"没有"
 > 3. **Agent 标识前缀**（可选） —— 用于区分多个 agent 的记忆命名空间，留空就用默认
 >
 > 先告诉我服务地址吧？
 
-> (EN) I'll set up OpenViking long-term memory for you. Once configured, I'll automatically remember important info from our chats and recall it later.
+> (EN) I'll set up KMM long-term memory for you. Once configured, I'll automatically remember important info from our chats and recall it later.
 >
 > I need 3 things (ask your admin if unsure):
-> 1. **OpenViking server URL** — e.g. `https://ov.example.com` or `http://192.168.1.100:1933`. For a local server, just say "local".
+> 1. **KMM server URL** — e.g. `https://ov.example.com` or `http://192.168.1.100:1933`. For a local server, just say "local".
 > 2. **API Key** — for auth. Say "none" if the server has no auth.
 > 3. **peer prefix** (optional) — used to namespace memories across agents. Leave blank for default.
 >
@@ -195,17 +195,17 @@ Replace `BASE_URL` with the actual value.
 
 ### Server-not-ready handling
 
-This skill **does not install or operate the OpenViking server**. If the user's server is unreachable, present the situation honestly and offer two paths:
+This skill **does not install or operate the KMM server**. If the user's server is unreachable, present the situation honestly and offer two paths:
 
 > (CN) ❌ 我连不上 `BASE_URL`。可能是：
-> 1) 服务还没启动 —— 请联系你的 OpenViking 服务管理员把它起起来；如果是你自己负责，请参考 OpenViking 官方文档（`https://github.com/volcengine/OpenViking`）的 server 启动指引。
+> 1) 服务还没启动 —— 请联系你的 KMM 服务管理员把它起起来；如果是你自己负责，请参考 KMM 官方文档（`<your-kmm-docs-url>`）的 server 启动指引。
 > 2) 地址不对 —— 你可以重新告诉我正确的地址。
 > 3) 网络不通（防火墙 / VPN / 内网）—— 你确认一下网络。
 >
 > 也可以选择"先把配置写下来"，等服务起来就自动生效，要这么办吗？
 
 > (EN) ❌ Cannot reach `BASE_URL`. Likely cause:
-> 1) **Server isn't running** — please ask your OpenViking admin to start it. If you own the server, follow the OpenViking official docs (`https://github.com/volcengine/OpenViking`) to start it. **This skill does not install or run the server.**
+> 1) **Server isn't running** — please ask your KMM admin to start it. If you own the server, follow the KMM official docs (`<your-kmm-docs-url>`) to start it. **This skill does not install or run the server.**
 > 2) **Wrong URL** — give me the correct URL.
 > 3) **Network blocked** (firewall / VPN / private network) — please verify connectivity.
 >
@@ -231,7 +231,7 @@ Tell the user:
 Run:
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 ```
 
 Trigger fallback to Path B only if the output contains any of these strings:
@@ -245,14 +245,14 @@ Trigger fallback to Path B only if the output contains any of these strings:
 Before falling back, also try the explicit registry prefix once:
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 ```
 
 If the install **succeeds**, jump to STEP 7.
 
 If both attempts fail with one of the fallback-eligible errors above, go to Path B. If the failure is a version conflict, missing dependency, package validation error, or another non-registry error, stop and show the last 30 lines to the user.
 
-### Path B — Backup: `ov-install` (bypasses ClawHub)
+### Path B — Backup: `kmm-install` (bypasses ClawHub)
 
 Tell the user:
 
@@ -262,7 +262,7 @@ Tell the user:
 Run the installer with `npx` (no global install needed):
 
 ```bash
-npx -y openclaw-openviking-setup-helper@latest --base-url BASE_URL [--api-key API_KEY] [--peer-prefix PEER_PREFIX] [--account-id ACCOUNT_ID] [--user-id USER_ID]
+npx -y openclaw-kmm-setup-helper@latest --base-url BASE_URL [--api-key API_KEY] [--peer-prefix PEER_PREFIX] [--account-id ACCOUNT_ID] [--user-id USER_ID]
 ```
 
 Build the flag list according to what the user gave you:
@@ -272,16 +272,16 @@ Build the flag list according to what the user gave you:
 - Pass `--peer-prefix PEER_PREFIX` only if the user gave one.
 - `--account-id` / `--user-id` only if the root-key path requires them.
 
-`ov-install` will, in one shot:
-1. Download the `@openviking/openclaw-plugin` package from npm into a temporary staging dir.
+`kmm-install` will, in one shot:
+1. Download the `@kmm/openclaw-plugin` package from npm into a temporary staging dir.
 2. Copy the package into the OpenClaw `extensions/` dir and install plugin dependencies.
 3. Register the plugin in `openclaw.json` (via `openclaw plugins enable` or direct write).
-4. Run `openclaw openviking setup --json --base-url … [--api-key …]` for the user.
+4. Run `openclaw kmm setup --json --base-url … [--api-key …]` for the user.
 5. Return a non-zero exit if setup needs explicit `--allow-offline` or `--force-slot` consent.
 
-This means **STEP 7 is effectively done by `ov-install`**. After `ov-install` exits 0, jump straight to **STEP 9** (gateway restart) and **STEP 10** (verify).
+This means **STEP 7 is effectively done by `kmm-install`**. After `kmm-install` exits 0, jump straight to **STEP 9** (gateway restart) and **STEP 10** (verify).
 
-If `ov-install` exits non-zero, capture the last 30 lines of its output, show them to the user, and stop. Don't retry blindly.
+If `kmm-install` exits non-zero, capture the last 30 lines of its output, show them to the user, and stop. Don't retry blindly.
 
 ---
 
@@ -290,7 +290,7 @@ If `ov-install` exits non-zero, capture the last 30 lines of its output, show th
 Run the setup wizard non-interactively. Build flags from collected values:
 
 ```bash
-openclaw openviking setup --base-url BASE_URL --json [--api-key API_KEY] [--peer-prefix PEER_PREFIX] [--account-id ACCOUNT_ID] [--user-id USER_ID] [--allow-offline] [--force-slot]
+openclaw kmm setup --base-url BASE_URL --json [--api-key API_KEY] [--peer-prefix PEER_PREFIX] [--account-id ACCOUNT_ID] [--user-id USER_ID] [--allow-offline] [--force-slot]
 ```
 
 Rules:
@@ -313,7 +313,7 @@ The wizard prints a single JSON object:
   "config": { "mode": "remote", "baseUrl": "...", "apiKey": "...", "peer_prefix": "...", "accountId": "...", "userId": "..." },
   "health": { "ok": true, "version": "...", "compatibility": "compatible" | "server_too_old" | "server_too_new" | "unknown" },
   "keyProbe": { "keyType": "user_key" | "root_key" | "no_key" | "unknown", "needsAccountId": false, "needsUserId": false, "detail": "..." },
-  "slot": { "activated": true, "replaced": false, "previousOwner": "openviking" },
+  "slot": { "activated": true, "replaced": false, "previousOwner": "kmm" },
   "error": "..."
 }
 ```
@@ -337,8 +337,8 @@ The error text looks like:
 
 **Do NOT silently use `--force-slot`.** Ask the user:
 
-> (CN) 你的 OpenClaw 当前 contextEngine 槽被 `<other-plugin>` 占着。如果用 OpenViking 替换它，`<other-plugin>` 就不再生效。要替换吗？
-> (EN) Your `contextEngine` slot is currently owned by `<other-plugin>`. Activating OpenViking will disable it. Replace?
+> (CN) 你的 OpenClaw 当前 contextEngine 槽被 `<other-plugin>` 占着。如果用 KMM 替换它，`<other-plugin>` 就不再生效。要替换吗？
+> (EN) Your `contextEngine` slot is currently owned by `<other-plugin>`. Activating KMM will disable it. Replace?
 
 If the user agrees, retry the same setup command with `--force-slot` appended. If they decline, tell them config has been saved but the slot is unchanged, and stop.
 
@@ -350,16 +350,16 @@ The error text looks like:
 
 Ask the user:
 
-> (CN) 你给的是 root 级 API Key，需要再补两个值才能用：账户 ID（accountId）和用户 ID（userId）。这两个一般是 OpenViking 服务管理员配的，不知道就问他们。
-> (EN) Your API key is a root key, which needs two more values: `accountId` and `userId`. Both come from your OpenViking server admin — ask them if unsure.
+> (CN) 你给的是 root 级 API Key，需要再补两个值才能用：账户 ID（accountId）和用户 ID（userId）。这两个一般是 KMM 服务管理员配的，不知道就问他们。
+> (EN) Your API key is a root key, which needs two more values: `accountId` and `userId`. Both come from your KMM server admin — ask them if unsure.
 
 After collecting, retry the setup command with `--account-id` and `--user-id` appended.
 
 ---
 
-## STEP 8: (Reserved — done inside STEP 7 or by `ov-install`)
+## STEP 8: (Reserved — done inside STEP 7 or by `kmm-install`)
 
-The setup wizard already wrote `plugins.entries.openviking.config.*` and (if successful) set `plugins.slots.contextEngine = "openviking"`. There is no separate STEP 8 — go to STEP 9.
+The setup wizard already wrote `plugins.entries.kmm.config.*` and (if successful) set `plugins.slots.contextEngine = "kmm"`. There is no separate STEP 8 — go to STEP 9.
 
 ---
 
@@ -387,7 +387,7 @@ Wait ~3 seconds before STEP 10.
 ## STEP 10: Verify
 
 ```bash
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 Expected output:
@@ -410,22 +410,22 @@ Expected output:
 
 ### Success message
 
-> (CN) 🎉 全部搞定！OpenViking 长期记忆已经接好了。
+> (CN) 🎉 全部搞定！KMM 长期记忆已经接好了。
 >
 > 工作方式：
-> - **每一轮**：你的对话会被自动追加到 OpenViking session 里；自动抽取依赖阈值 commit 或 `/compact`
+> - **每一轮**：你的对话会被自动追加到 KMM session 里；自动抽取依赖阈值 commit 或 `/compact`
 > - **明确要记住时**：如果你说“记住/保存/存一下”某个长期事实，我会用 `memory_store` 立即提交到记忆管线
-> - **`/compact` 时**：待提交的 session 消息会在 OpenViking 服务端被抽取成长期记忆
+> - **`/compact` 时**：待提交的 session 消息会在 KMM 服务端被抽取成长期记忆
 > - **后续会话**：每次回复前我都会自动搜一下相关记忆并带进上下文
 >
 > 想验证一下吗？可以直接说“记住我的邮箱是 test@example.com”，让我通过 `memory_store` 立即提交；或者先聊几句包含可记忆事实的话，再调一下 `/compact`。之后开新对话问“我的邮箱是？”，应该就能召回了。
 
-> (EN) 🎉 All set! OpenViking long-term memory is connected.
+> (EN) 🎉 All set! KMM long-term memory is connected.
 >
 > How it works:
-> - **Every turn**: our messages are appended to an OpenViking session; automatic extraction depends on a threshold commit or `/compact`
+> - **Every turn**: our messages are appended to an KMM session; automatic extraction depends on a threshold commit or `/compact`
 > - **Explicit remember requests**: if you ask me to remember/save/store a long-term fact, I can use `memory_store` to commit it immediately
-> - **On `/compact`**: pending session messages are extracted into long-term memories on the OpenViking server
+> - **On `/compact`**: pending session messages are extracted into long-term memories on the KMM server
 > - **Future sessions**: relevant memories are auto-retrieved and injected before my replies
 >
 > Want to verify? Say "remember my email is test@example.com" so I can commit it via `memory_store`, or tell me a few memory-worthy facts and run `/compact`. Then start a new chat and ask "what's my email?" — it should recall.
@@ -436,13 +436,13 @@ Expected output:
 
 ## How It Works
 
-The context-engine pipeline has three distinct stages plus one explicit write path — keep them apart, especially when telling users when memories become searchable long-term memory on the OpenViking server:
+The context-engine pipeline has three distinct stages plus one explicit write path — keep them apart, especially when telling users when memories become searchable long-term memory on the KMM server:
 
-- **Archive / capture (context-engine `afterTurn`)**: at the end of a user turn, the plugin appends user/assistant messages to the OpenViking session via `POST /api/v1/sessions/.../messages`. This is **session capture only** unless `pending_tokens` crosses `commitTokenThreshold`; below the threshold, no memory extraction runs yet. You'll see session message counts grow on the server, but no new files under `viking://user/.../memories/`.
+- **Archive / capture (context-engine `afterTurn`)**: at the end of a user turn, the plugin appends user/assistant messages to the KMM session via `POST /api/v1/sessions/.../messages`. This is **session capture only** unless `pending_tokens` crosses `commitTokenThreshold`; below the threshold, no memory extraction runs yet. You'll see session message counts grow on the server, but no new files under `viking://user/.../memories/`.
 - **Memory extraction (threshold commit or `/compact`)**: memory extraction runs after a session commit. The commit can be triggered asynchronously when `afterTurn` crosses `commitTokenThreshold`, synchronously when the user invokes OpenClaw's `/compact` command, or explicitly by `memory_store`. The server-side extraction pipeline reads the archived session and writes new memories.
   - `captureMode: "semantic"` (default): server extraction pipeline filters all qualifying text.
   - `captureMode: "keyword"`: only text matching trigger words (e.g. "remember", "preference") is considered.
-- **Auto-Recall (context-engine `assemble()`)**: before prompt context is assembled, the plugin queries OpenViking for relevant memories and injects them into context. Recall works even when there are no extracted memories yet — you just won't see anything come back.
+- **Auto-Recall (context-engine `assemble()`)**: before prompt context is assembled, the plugin queries KMM for relevant memories and injects them into context. Recall works even when there are no extracted memories yet — you just won't see anything come back.
 
 **Practical implication for testing**: if you write down a short fact and immediately try to recall it without a threshold commit, `/compact`, or `memory_store`, the plugin may only retrieve it as recent session context, not as a long-term memory. To verify long-term memory cross-session deterministically, run `/compact` or use `memory_store` for the fact being tested.
 
@@ -452,9 +452,9 @@ Auto-capture is best-effort and commit-dependent. When the user explicitly says 
 
 Use `memory_store` as the integration-side reliable path for durable-memory intent:
 
-- It writes the supplied text into an OpenViking session and calls `commit(wait=true)`.
+- It writes the supplied text into an KMM session and calls `commit(wait=true)`.
 - It complements auto-capture; it does not replace normal session capture.
-- If it commits but extracts 0 memories, the explicit path has done its job. Treat that as a server-side extraction/model/configuration issue and check OpenViking logs.
+- If it commits but extracts 0 memories, the explicit path has done its job. Treat that as a server-side extraction/model/configuration issue and check KMM logs.
 
 ## Available Tools
 
@@ -478,7 +478,7 @@ Example: user asks "What programming language did I say I like?"
 |---|---|---|
 | `text` | Yes | Information text to store |
 | `role` | No | Session role (default `user`) |
-| `sessionId` | No | Existing OpenViking session ID |
+| `sessionId` | No | Existing KMM session ID |
 
 Use this when the user explicitly asks to remember/save/store a long-term fact, preference, project, or decision.
 
@@ -496,7 +496,7 @@ Example: user says "Remember my email is xxx@example.com".
 
 Example: user says "Forget my phone number".
 
-### `ov_archive_search` — Search Archived Original Messages
+### `kmm_archive_search` — Search Archived Original Messages
 
 | Parameter | Required | Description |
 |---|---|---|
@@ -505,7 +505,7 @@ Example: user says "Forget my phone number".
 
 Use when `[Session History Summary]` is too coarse. Try at least two keyword variants before concluding the detail is unavailable.
 
-### `ov_archive_expand` — Expand An Archive
+### `kmm_archive_expand` — Expand An Archive
 
 | Parameter | Required | Description |
 |---|---|---|
@@ -513,7 +513,7 @@ Use when `[Session History Summary]` is too coarse. Try at least two keyword var
 
 ### `add_resource` — Import Resource
 
-The agent-visible `add_resource` tool is disabled by default (`enableAddResourceTool=false`). Use manual `/add-resource` for resource ingestion unless you explicitly opt in. Even when enabled, never use `add_resource` during search, retrieval, URI reading, or search-result optimization; use `ov_search` and `ov_read` for those flows.
+The agent-visible `add_resource` tool is disabled by default (`enableAddResourceTool=false`). Use manual `/add-resource` for resource ingestion unless you explicitly opt in. Even when enabled, never use `add_resource` during search, retrieval, URI reading, or search-result optimization; use `kmm_search` and `kmm_read` for those flows.
 
 | Parameter | Required | Description |
 |---|---|---|
@@ -536,7 +536,7 @@ The agent-visible `add_resource` tool is disabled by default (`enableAddResource
 
 Agent Skill best practice: verify frontmatter has a precise `name`, a trigger-oriented `description`, useful `tags`, explicit scope boundaries, and concrete execution steps. Do not include secrets in skill content.
 
-### `ov_search` — Search Resources and Skills
+### `kmm_search` — Search Resources and Skills
 
 | Parameter | Required | Description |
 |---|---|---|
@@ -544,22 +544,22 @@ Agent Skill best practice: verify frontmatter has a precise `name`, a trigger-or
 | `uri` | No | Optional search URI. Defaults to resources plus agent skills. |
 | `limit` | No | Max results per search scope. Default: 10. |
 
-Important: `ov_search` result URIs are OpenViking virtual URIs, not local file paths. If full content is needed, call `ov_read` with the exact `viking://...` URI returned by search or trace results; do not use filesystem read tools.
+Important: `kmm_search` result URIs are KMM virtual URIs, not local file paths. If full content is needed, call `kmm_read` with the exact `viking://...` URI returned by search or trace results; do not use filesystem read tools.
 
-### `ov_read` — Read OpenViking Content
+### `kmm_read` — Read KMM Content
 
 | Parameter | Required | Description |
 |---|---|---|
-| `uri` | Yes | Exact `viking://...` URI returned by `ov_search` or recall trace results. Local file paths and `openviking://...` display aliases are refused. |
+| `uri` | Yes | Exact `viking://...` URI returned by `kmm_search` or recall trace results. Local file paths and `kmm://...` display aliases are refused. |
 
-### `ov_recall_trace` — Query Recall Trace
+### `kmm_recall_trace` — Query Recall Trace
 
 | Parameter | Required | Description |
 |---|---|---|
 | `turn` | No | `latest` or `all`; default `latest`. |
 | `traceId` | No | Exact trace ID. |
 | `sessionId` / `sessionKey` / `ovSessionId` | No | Session filters. |
-| `source` | No | `auto_recall`, `memory_recall`, `ov_search`, or `ov_archive_search`. |
+| `source` | No | `auto_recall`, `memory_recall`, `kmm_search`, or `kmm_archive_search`. |
 | `resourceTypes` | No | Target type filters: `resource`, `user`, `agent`. |
 | `since` / `until` | No | Unix timestamp bounds in milliseconds. |
 | `includeContent` | No | Read selected/displayed URI content previews on demand. |
@@ -573,26 +573,26 @@ Use these when a preview contains a `viking://session/<session_id>/tool-results/
 
 | Tool | Parameters |
 |---|---|
-| `openviking_tool_result_list` | `tool_name?`, `limit?` (default 50) |
-| `openviking_tool_result_search` | `tool_output_ref`, `query`, `limit?` (default 20), `context_chars?` (default 300) |
-| `openviking_tool_result_read` | `tool_output_ref`, `offset?` (default 0), `limit?` (default 20000) |
+| `kmm_tool_result_list` | `tool_name?`, `limit?` (default 50) |
+| `kmm_tool_result_search` | `tool_output_ref`, `query`, `limit?` (default 20), `context_chars?` (default 300) |
+| `kmm_tool_result_read` | `tool_output_ref`, `offset?` (default 0), `limit?` (default 20000) |
 
 ## Configuration Schema
 
-These are the keys under `plugins.entries.openviking.config` in `openclaw.json`. The setup wizard / `ov-install` sets the first few; the rest are tunables.
+These are the keys under `plugins.entries.kmm.config` in `openclaw.json`. The setup wizard / `kmm-install` sets the first few; the rest are tunables.
 
 | Field | Default | Description |
 |---|---|---|
 | `mode` | `"remote"` (forced by plugin) | Always remote in this skill. Don't set manually. |
-| `baseUrl` | `http://127.0.0.1:1933` | OpenViking server URL. |
+| `baseUrl` | `http://127.0.0.1:1933` | KMM server URL. |
 | `apiKey` | — | API key. Optional if server has no auth. |
-| `peer_role` | `assistant` | Peer identity mode: `none`, `assistant`, or `person`. Session messages use body `peer_id`; data-plane recall/search uses `X-OpenViking-Actor-Peer`. |
+| `peer_role` | `assistant` | Peer identity mode: `none`, `assistant`, or `person`. Session messages use body `peer_id`; data-plane recall/search uses tenant identity headers. |
 | `peer_prefix` | `""` | Optional prefix for assistant `peer_id` / actor peer values when `peer_role=assistant`. Letters / digits / `_` / `-`. |
 | `accountId` | — | Required when `apiKey` is a root key. |
 | `userId` | — | Required when `apiKey` is a root key. |
 | `targetUri` | `viking://user/memories` | Default search scope URI. |
-| `timeoutMs` | (plugin default) | HTTP timeout for OpenViking calls. |
-| `autoCapture` | `true` | Auto-append turn messages to the OpenViking session at `afterTurn`; extraction runs only after a threshold commit, `/compact`, or explicit `memory_store`. |
+| `timeoutMs` | (plugin default) | HTTP timeout for KMM calls. |
+| `autoCapture` | `true` | Auto-append turn messages to the KMM session at `afterTurn`; extraction runs only after a threshold commit, `/compact`, or explicit `memory_store`. |
 | `captureMode` | `"semantic"` | Filter mode used by the server-side extraction pipeline: `semantic` or `keyword`. |
 | `captureMaxLength` | `24000` | Max text length per archived turn. |
 | `autoRecall` | `true` | Auto-recall and inject memories before reply. |
@@ -607,22 +607,22 @@ These are the keys under `plugins.entries.openviking.config` in `openclaw.json`.
 | `commitKeepRecentCount` | `10` | Recent messages kept live after afterTurn commit. Compact always uses `0`. |
 | `bypassSessionPatterns` | — | Glob patterns for sessions skipped by capture. |
 | `ingestReplyAssist` | (plugin default) | Reply-assist ingestion toggle. |
-| `emitStandardDiagnostics` | `false` | Emit structured `openviking: diag {...}` lines. |
-| `logFindRequests` | `false` | Log routing for find/session writes. Also enabled by `OPENVIKING_LOG_ROUTING=1` or `OPENVIKING_DEBUG=1`. |
+| `emitStandardDiagnostics` | `false` | Emit structured `kmm: diag {...}` lines. |
+| `logFindRequests` | `false` | Log routing for find/session writes. Also enabled by `KMM_LOG_ROUTING=1` or `KMM_DEBUG=1`. |
 | `traceRecall` | `false` | Record recall traces in memory. |
 | `traceRecallPersist` | `false` | Persist recall traces to JSONL files. |
-| `traceRecallDir` | `~/.openclaw/openviking/recall-traces` | Recall trace directory. |
+| `traceRecallDir` | `~/.openclaw/kmm/recall-traces` | Recall trace directory. |
 
 To change a value:
 
 ```bash
-openclaw config set plugins.entries.openviking.config.<field> <value>
+openclaw config set plugins.entries.kmm.config.<field> <value>
 openclaw gateway restart
 ```
 
 ## Multi-Tenant (Root API Keys)
 
-Some OpenViking deployments use a single **root** API key shared across tenants. In that case the plugin needs both `accountId` and `userId` so it can scope memories correctly. The setup wizard detects this automatically and returns:
+Some KMM deployments use a single **root** API key shared across tenants. In that case the plugin needs both `accountId` and `userId` so it can scope memories correctly. The setup wizard detects this automatically and returns:
 
 ```
 Root API key detected. Missing: --account-id, --user-id
@@ -630,11 +630,11 @@ Root API key detected. Missing: --account-id, --user-id
 
 When you see this:
 
-1. Ask the user for both values (they come from the OpenViking admin).
+1. Ask the user for both values (they come from the KMM admin).
 2. Retry STEP 7 with both flags:
 
 ```bash
-openclaw openviking setup --base-url BASE_URL --api-key API_KEY --account-id ACCOUNT_ID --user-id USER_ID --json
+openclaw kmm setup --base-url BASE_URL --api-key API_KEY --account-id ACCOUNT_ID --user-id USER_ID --json
 ```
 
 A **user key** (issued per tenant) does not need these flags.
@@ -646,25 +646,25 @@ If the user runs multiple OpenClaw instances (e.g. testing several agents in par
 To target a non-default instance:
 
 ```bash
-npx -y openclaw-openviking-setup-helper@latest --workdir ~/.openclaw-second --base-url ... --api-key ...
+npx -y openclaw-kmm-setup-helper@latest --workdir ~/.openclaw-second --base-url ... --api-key ...
 ```
 
-`ov-install` writes a helper env file when the state dir is non-default:
+`kmm-install` writes a helper env file when the state dir is non-default:
 
-- Unix: `~/.openclaw/openviking.env` containing `export OPENCLAW_STATE_DIR='...'`
-- Windows: `~/.openclaw/openviking.env.bat` and `.ps1` setting the same variable
+- Unix: `~/.openclaw/kmm.env` containing `export OPENCLAW_STATE_DIR='...'`
+- Windows: `~/.openclaw/kmm.env.bat` and `.ps1` setting the same variable
 
 Source it before running `openclaw` commands so they hit the correct state:
 
 **Unix:**
 ```bash
-source ~/.openclaw/openviking.env
+source ~/.openclaw/kmm.env
 openclaw status
 ```
 
 **Windows (PowerShell):**
 ```powershell
-. "$HOME/.openclaw/openviking.env.ps1"
+. "$HOME/.openclaw/kmm.env.ps1"
 openclaw status
 ```
 
@@ -678,17 +678,17 @@ openclaw gateway restart
 
 # Check overall status
 openclaw status
-openclaw openviking status --json
+openclaw kmm status --json
 
-# Read current OpenViking slot
+# Read current KMM slot
 openclaw config get plugins.slots.contextEngine
 
-# Disable OpenViking memory (keep config, deactivate slot)
+# Disable KMM memory (keep config, deactivate slot)
 openclaw config set plugins.slots.contextEngine legacy
 openclaw gateway restart
 
 # Re-enable
-openclaw config set plugins.slots.contextEngine openviking
+openclaw config set plugins.slots.contextEngine kmm
 openclaw gateway restart
 ```
 
@@ -697,24 +697,24 @@ openclaw gateway restart
 ### Preferred: via OpenClaw plugin manager
 
 ```bash
-openclaw plugins uninstall openviking
+openclaw plugins uninstall kmm
 openclaw config set plugins.slots.contextEngine legacy
 openclaw gateway restart
 ```
 
-### If installed through backup `ov-install`
+### If installed through backup `kmm-install`
 
 ```bash
-npx -y openclaw-openviking-setup-helper@latest --uninstall
+npx -y openclaw-kmm-setup-helper@latest --uninstall
 ```
 
 This will:
 
 1. Stop the OpenClaw gateway.
 2. Back up `openclaw.json`.
-3. Remove all OpenViking plugin config from `openclaw.json` (`plugins.entries.openviking`, `plugins.allow`, `plugins.installs.openviking`, `plugins.slots.contextEngine`).
+3. Remove all KMM plugin config from `openclaw.json` (`plugins.entries.kmm`, `plugins.allow`, `plugins.installs.kmm`, `plugins.slots.contextEngine`).
 4. Move the plugin directory to `disabled-extensions/` as backup.
-5. Remove the helper env files (`openviking.env`, `.bat`, `.ps1`).
+5. Remove the helper env files (`kmm.env`, `.bat`, `.ps1`).
 
 Add `--base-url dummy` for fully non-interactive mode (skips the confirmation prompt).
 
@@ -723,7 +723,7 @@ Add `--base-url dummy` for fully non-interactive mode (skips the confirmation pr
 ```bash
 openclaw gateway stop
 openclaw config set plugins.slots.contextEngine legacy
-# Then edit ~/.openclaw/openclaw.json and remove openviking from
+# Then edit ~/.openclaw/openclaw.json and remove kmm from
 #   plugins.entries
 #   plugins.allow
 #   plugins.installs
@@ -738,16 +738,16 @@ Match against actual stderr / JSON `error` strings.
 |---|---|---|
 | `command not found: openclaw` | OpenClaw not installed | Stop. Ask user to install OpenClaw >= 2026.4.8. |
 | `command not found: node` / `'node' is not recognized` | Node missing | Stop. Ask user to install Node.js >= 22. |
-| `429` / `rate limit` / `Too Many Requests` from `plugins install` | ClawHub throttle | Switch to backup Path B (`ov-install`). |
-| `not logged in` / `please log in` from `plugins install` | Anonymous user hit limit | Switch to backup Path B (`ov-install`). |
+| `429` / `rate limit` / `Too Many Requests` from `plugins install` | ClawHub throttle | Switch to backup Path B (`kmm-install`). |
+| `not logged in` / `please log in` from `plugins install` | Anonymous user hit limit | Switch to backup Path B (`kmm-install`). |
 | `ECONNREFUSED` / `connection refused` on `BASE_URL/health` | Server not running | Server-not-ready handling in STEP 5. |
 | `ETIMEDOUT` on `BASE_URL/health` | Network blocked | Ask about firewall / VPN / proxy. |
 | `--json requires --base-url for non-interactive mode` | Built command wrong | Add `--base-url BASE_URL` and retry. |
 | `Server unreachable: …. Use --allow-offline to save config anyway.` | Setup couldn't reach server | Offer `--allow-offline`. |
 | `contextEngine slot is owned by "<x>". … Use --force-slot to replace.` | Slot conflict | Ask user, then retry with `--force-slot`. |
 | `Root API key detected. Missing: --account-id, --user-id` | Multi-tenant key | Collect both, retry with `--account-id` `--user-id`. |
-| `openviking: config parse failed` (in gateway log) | Bad value in `openclaw.json` | Show user; check `peer_prefix` charset, URL format. |
-| `extracted 0 memories` after a turn | Server VLM/embedding misconfigured | **Out of scope.** Tell user this is a server-side issue — ask their OpenViking admin to check VLM / embedding config. |
+| `kmm: config parse failed` (in gateway log) | Bad value in `openclaw.json` | Show user; check `peer_prefix` charset, URL format. |
+| `extracted 0 memories` after a turn | Server VLM/embedding misconfigured | **Out of scope.** Tell user this is a server-side issue — ask their KMM admin to check VLM / embedding config. |
 | `401` / `403` on plugin requests, but `/health` works | Server requires auth on API endpoints | Re-run STEP 7 with the correct `--api-key`. |
 | Plugin doesn't appear in `openclaw plugins list` after Path A | Install didn't actually finish | Re-run Path A; use Path B only if the failure is registry/rate-limit related. |
 
@@ -757,10 +757,10 @@ Match against actual stderr / JSON `error` strings.
 2. **Never skip STEP 5 (connectivity check).** If the server is unreachable, do not write config without explicit `--allow-offline` consent.
 3. **Never silently use `--force-slot`.** Slot replacement disables another plugin — always confirm with the user first.
 4. **Never invent values.** If the user can't provide a required value, stop and tell them what to ask their admin.
-5. **Never claim success without STEP 10.** Only after `openclaw openviking status --json` shows `configured: true && slotActive: true && health.ok: true` may you tell the user it's done.
+5. **Never claim success without STEP 10.** Only after `openclaw kmm status --json` shows `configured: true && slotActive: true && health.ok: true` may you tell the user it's done.
 6. **Use `--peer-prefix` for assistant peer prefixes.** The old ID-style setup flag is no longer supported by the schema.
 7. **For Windows, use PowerShell equivalents.** Don't rely on `nohup`, `&`, `mkdir -p`, `source`, etc.
-8. **Switch to Path B (ov-install) only for ClawHub/rate-limit/registry availability failures.** Don't use it to hide version conflicts or package validation errors.
-9. **Do NOT install or operate the OpenViking server.** This skill assumes the server is already running. If it isn't, tell the user to contact their admin or follow the OpenViking docs.
+8. **Switch to Path B (kmm-install) only for ClawHub/rate-limit/registry availability failures.** Don't use it to hide version conflicts or package validation errors.
+9. **Do NOT install or operate the KMM server.** This skill assumes the server is already running. If it isn't, tell the user to contact their admin or follow the KMM docs.
 10. **Be brief and friendly in user-visible text.** Save technical detail for when something actually fails.
-11. **Do NOT use `clawhub install openviking`.** That installs a different thing (an AgentSkill, not the plugin).
+11. **Do NOT use `clawhub install kmm`.** That installs a different thing (an AgentSkill, not the plugin).

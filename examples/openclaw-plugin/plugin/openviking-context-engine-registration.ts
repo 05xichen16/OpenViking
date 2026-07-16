@@ -74,7 +74,7 @@ export function registerOpenVikingContextEngine<
 ): void {
   if (typeof deps.api.registerContextEngine !== "function") {
     deps.logger.warn(
-      "openviking: registerContextEngine is unavailable; context-engine behavior will not run",
+      "kmm: registerContextEngine is unavailable; context-engine behavior will not run",
     );
     return;
   }
@@ -97,6 +97,6 @@ export function registerOpenVikingContextEngine<
     return contextEngine;
   });
   deps.logger.info(
-    "openviking: registered context-engine (assemble=archive+active+auto-recall, afterTurn=auto-capture, session→OV id=uuid-or-sha256 + diag/Phase2 options)",
+    "kmm: registered context-engine (assemble=archive+active+auto-recall, afterTurn=auto-capture, session→OV id=uuid-or-sha256 + diag/Phase2 options)",
   );
 }

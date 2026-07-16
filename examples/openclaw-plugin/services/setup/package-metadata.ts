@@ -44,8 +44,8 @@ export function readCompatRangeFromManifest(): SetupCompatibilityRange {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
     const compat = manifest?.compatibility ?? {};
     return {
-      min: String(compat.minOpenvikingVersion ?? ""),
-      max: String(compat.maxOpenvikingVersion ?? ""),
+      min: String(compat.minKmmVersion ?? ""),
+      max: String(compat.maxKmmVersion ?? ""),
     };
   } catch {
     return { min: "", max: "" };

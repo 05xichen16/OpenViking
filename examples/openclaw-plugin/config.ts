@@ -51,7 +51,7 @@ export type MemoryOpenVikingConfig = {
   commitKeepRecentCount?: number;
   bypassSessionPatterns?: string[];
   /**
-   * When true (default), emit structured `openviking: diag {...}` lines (and any future
+   * When true (default), emit structured `kmm: diag {...}` lines (and any future
    * standard-diagnostics file writes) for assemble/afterTurn. Set false to disable.
    */
   emitStandardDiagnostics?: boolean;
@@ -125,7 +125,7 @@ const DEFAULT_BYPASS_SESSION_PATTERNS: string[] = [];
 const DEFAULT_EMIT_STANDARD_DIAGNOSTICS = false;
 const DEFAULT_PEER_ROLE = "assistant" as const;
 const DEFAULT_PEER_PREFIX = "";
-const DEFAULT_TRACE_RECALL_DIR = "~/.openclaw/openviking/recall-traces";
+const DEFAULT_TRACE_RECALL_DIR = "~/.openclaw/kmm/recall-traces";
 const DEFAULT_TRACE_RECALL_RETENTION_DAYS = 14;
 const DEFAULT_TRACE_RECALL_LOAD_RECENT_DAYS = 2;
 const DEFAULT_TRACE_RECALL_MAX_ENTRIES = 1000;
@@ -139,19 +139,19 @@ type RecallTargetType = typeof ALLOWED_RECALL_TARGET_TYPES[number];
 export const OPENVIKING_ADD_RESOURCE_TOOL_NAME = "add_resource" as const;
 export const OPENVIKING_DEFAULT_ENABLED_TOOL_NAMES = [
   "add_skill",
-  "ov_search",
-  "ov_read",
-  "ov_multi_read",
-  "ov_list",
+  "kmm_search",
+  "kmm_read",
+  "kmm_multi_read",
+  "kmm_list",
   "memory_recall",
-  "ov_recall_trace",
+  "kmm_recall_trace",
   "memory_store",
   "memory_forget",
-  "ov_archive_search",
-  "ov_archive_expand",
-  "openviking_tool_result_read",
-  "openviking_tool_result_search",
-  "openviking_tool_result_list",
+  "kmm_archive_search",
+  "kmm_archive_expand",
+  "kmm_tool_result_read",
+  "kmm_tool_result_search",
+  "kmm_tool_result_list",
 ] as const;
 export const OPENVIKING_ALL_TOOL_NAMES = [
   OPENVIKING_ADD_RESOURCE_TOOL_NAME,
@@ -162,14 +162,14 @@ export const OPENVIKING_TOOL_GROUPS: Record<string, readonly OpenVikingToolName[
   all: OPENVIKING_ALL_TOOL_NAMES,
   default: OPENVIKING_DEFAULT_ENABLED_TOOL_NAMES,
   memory: ["memory_recall", "memory_store", "memory_forget"],
-  resource_query: ["ov_search", "ov_read", "ov_multi_read", "ov_list"],
+  resource_query: ["kmm_search", "kmm_read", "kmm_multi_read", "kmm_list"],
   import: ["add_resource", "add_skill"],
-  recall_trace: ["ov_recall_trace"],
-  archive: ["ov_archive_search", "ov_archive_expand"],
+  recall_trace: ["kmm_recall_trace"],
+  archive: ["kmm_archive_search", "kmm_archive_expand"],
   tool_result: [
-    "openviking_tool_result_read",
-    "openviking_tool_result_search",
-    "openviking_tool_result_list",
+    "kmm_tool_result_read",
+    "kmm_tool_result_search",
+    "kmm_tool_result_list",
   ],
 };
 const DEFAULT_AGENT_EXPERIENCE = {
@@ -194,10 +194,10 @@ function resolvePeerRole(configured: unknown) {
     if (role === "none" || role === "assistant" || role === "person") {
       return role;
     }
-    throw new Error(`openviking peer_role must be "none", "assistant", or "person"`);
+    throw new Error(`kmm peer_role must be "none", "assistant", or "person"`);
   }
   if (configured !== undefined) {
-    throw new Error(`openviking peer_role must be "none", "assistant", or "person"`);
+    throw new Error(`kmm peer_role must be "none", "assistant", or "person"`);
   }
   return DEFAULT_PEER_ROLE;
 }
@@ -274,7 +274,7 @@ function normalizeRecallTargetTypes(value: unknown, includeResources = false): R
   }
 
   if (unknown.length > 0) {
-    throw new Error(`openviking recallTargetTypes contains unknown resource types: ${unknown.join(", ")}`);
+    throw new Error(`kmm recallTargetTypes contains unknown resource types: ${unknown.join(", ")}`);
   }
 
   const result = normalized.length > 0 ? normalized : [...DEFAULT_RECALL_TARGET_TYPES];
@@ -334,7 +334,7 @@ function expandToolSelectors(value: unknown, fallback: string[], label: string):
   }
 
   if (unknown.length > 0) {
-    throw new Error(`openviking ${label} contains unknown tool selectors: ${unknown.join(", ")}`);
+    throw new Error(`kmm ${label} contains unknown tool selectors: ${unknown.join(", ")}`);
   }
   return normalized;
 }
@@ -383,7 +383,7 @@ function assertAllowedKeys(value: Record<string, unknown>, allowed: string[], la
 }
 
 function resolveDefaultBaseUrl(): string {
-  const fromEnv = getEnv("OPENVIKING_BASE_URL") || getEnv("OPENVIKING_URL");
+  const fromEnv = getEnv("KMM_BASE_URL") || getEnv("KMM_URL");
   if (fromEnv) {
     return fromEnv;
   }
@@ -451,13 +451,13 @@ export const memoryOpenVikingConfigSchema = {
         "runtimeQueryConfigPath",
         "agentExperience",
       ],
-      "openviking config",
+      "kmm config",
     );
     const agentExperienceRaw = toRecord(cfg.agentExperience);
     assertAllowedKeys(
       agentExperienceRaw,
       ["enabled", "recallLimit", "scoreThreshold", "maxInjectedChars", "minQueryChars"],
-      "openviking config agentExperience",
+      "kmm config agentExperience",
     );
 
     const mode = "remote" as const;
@@ -465,24 +465,24 @@ export const memoryOpenVikingConfigSchema = {
     const peerPrefix = resolvePeerPrefix(cfg.peer_prefix);
     const rawBaseUrl = typeof cfg.baseUrl === "string" ? cfg.baseUrl : resolveDefaultBaseUrl();
     const resolvedBaseUrl = resolveEnvVars(rawBaseUrl).replace(/\/+$/, "");
-    const rawApiKey = typeof cfg.apiKey === "string" ? cfg.apiKey : getEnv("OPENVIKING_API_KEY");
+    const rawApiKey = typeof cfg.apiKey === "string" ? cfg.apiKey : getEnv("KMM_API_KEY");
     const captureMode = cfg.captureMode;
     if (
       typeof captureMode !== "undefined" &&
       captureMode !== "semantic" &&
       captureMode !== "keyword"
     ) {
-      throw new Error(`openviking captureMode must be "semantic" or "keyword"`);
+      throw new Error(`kmm captureMode must be "semantic" or "keyword"`);
     }
 
     const accountId =
       typeof cfg.accountId === "string" && cfg.accountId.trim()
         ? cfg.accountId.trim()
-        : (getEnv("OPENVIKING_ACCOUNT_ID")?.trim() || "");
+        : (getEnv("KMM_ACCOUNT_ID")?.trim() || "");
     const userId =
       typeof cfg.userId === "string" && cfg.userId.trim()
         ? cfg.userId.trim()
-        : (getEnv("OPENVIKING_USER_ID")?.trim() || "");
+        : (getEnv("KMM_USER_ID")?.trim() || "");
 
     const recallMaxInjectedChars = Math.max(
       100,
@@ -496,7 +496,7 @@ export const memoryOpenVikingConfigSchema = {
         ),
       ),
     );
-    const recallResources = cfg.recallResources === true || envFlag("OPENVIKING_RECALL_RESOURCES");
+    const recallResources = cfg.recallResources === true || envFlag("KMM_RECALL_RESOURCES");
     const recallTargetTypes = normalizeRecallTargetTypes(
       cfg.recallTargetTypes,
       !("recallTargetTypes" in cfg) && recallResources,
@@ -509,7 +509,7 @@ export const memoryOpenVikingConfigSchema = {
       peer_role: peerRole,
       peer_prefix: peerPrefix,
       apiKey: rawApiKey ? resolveEnvVars(rawApiKey) : "",
-      headers: toStringRecord(cfg.headers, "openviking config headers"),
+      headers: toStringRecord(cfg.headers, "kmm config headers"),
       accountId,
       userId,
       targetUri: typeof cfg.targetUri === "string" ? cfg.targetUri : DEFAULT_TARGET_URI,
@@ -565,8 +565,8 @@ export const memoryOpenVikingConfigSchema = {
           : DEFAULT_EMIT_STANDARD_DIAGNOSTICS,
       logFindRequests:
         cfg.logFindRequests === true ||
-        envFlag("OPENVIKING_LOG_ROUTING") ||
-        envFlag("OPENVIKING_DEBUG"),
+        envFlag("KMM_LOG_ROUTING") ||
+        envFlag("KMM_DEBUG"),
       traceRecall: cfg.traceRecall === true,
       traceRecallPersist: cfg.traceRecallPersist === true,
       traceRecallDir:
@@ -660,9 +660,9 @@ export const memoryOpenVikingConfigSchema = {
   },
   uiHints: {
     baseUrl: {
-      label: "OpenViking Base URL",
+      label: "KMM Base URL",
       placeholder: DEFAULT_BASE_URL,
-      help: "HTTP URL when mode is remote (or use ${OPENVIKING_BASE_URL})",
+      help: "HTTP URL when mode is remote (or use ${KMM_BASE_URL})",
     },
     peer_role: {
       label: "Peer Role",
@@ -675,15 +675,15 @@ export const memoryOpenVikingConfigSchema = {
       help: "Optional prefix applied to assistant peer_id values derived from OpenClaw runtime agent IDs.",
     },
     apiKey: {
-      label: "OpenViking API Key",
+      label: "KMM API Key",
       sensitive: true,
-      placeholder: "${OPENVIKING_API_KEY}",
-      help: "Optional API key for OpenViking server",
+      placeholder: "${KMM_API_KEY}",
+      help: "Optional API key for KMM server",
     },
     headers: {
       label: "Headers",
       advanced: true,
-      help: "Optional HTTP headers merged into every OpenViking request.",
+      help: "Optional HTTP headers merged into every KMM request.",
     },
     accountId: {
       label: "Account ID",
@@ -700,7 +700,7 @@ export const memoryOpenVikingConfigSchema = {
     targetUri: {
       label: "Search Target URI",
       placeholder: DEFAULT_TARGET_URI,
-      help: "Default OpenViking target URI for memory search",
+      help: "Default KMM target URI for memory search",
     },
     timeoutMs: {
       label: "Request Timeout (ms)",
@@ -709,13 +709,13 @@ export const memoryOpenVikingConfigSchema = {
     },
     autoCapture: {
       label: "Auto-Capture",
-      help: "Extract memories from recent conversation messages via OpenViking sessions",
+      help: "Extract memories from recent conversation messages via KMM sessions",
     },
     captureMode: {
       label: "Capture Mode",
       placeholder: DEFAULT_CAPTURE_MODE,
       advanced: true,
-      help: '"semantic" captures all eligible user text and relies on OpenViking extraction; "keyword" uses trigger regex first.',
+      help: '"semantic" captures all eligible user text and relies on KMM extraction; "keyword" uses trigger regex first.',
     },
     captureMaxLength: {
       label: "Capture Max Length",
@@ -725,7 +725,7 @@ export const memoryOpenVikingConfigSchema = {
     },
     autoRecall: {
       label: "Auto-Recall",
-      help: "Inject relevant OpenViking memories into agent context",
+      help: "Inject relevant KMM memories into agent context",
     },
     autoRecallTimeoutMs: {
       label: "Auto-Recall Timeout (ms)",
@@ -741,7 +741,7 @@ export const memoryOpenVikingConfigSchema = {
     recallTargetTypes: {
       label: "Recall Target Types",
       placeholder: "user,agent",
-      help: "Comma-separated auto-recall and default memory_recall targets: user, agent, resource. Session history is available through ov_archive_search and ov_archive_expand.",
+      help: "Comma-separated auto-recall and default memory_recall targets: user, agent, resource. Session history is available through kmm_archive_search and kmm_archive_expand.",
       advanced: true,
     },
     recallLimit: {
@@ -780,7 +780,7 @@ export const memoryOpenVikingConfigSchema = {
     bypassSessionPatterns: {
       label: "Bypass Session Patterns",
       placeholder: "agent:*:cron:**",
-      help: "Completely bypass OpenViking for matching session keys. Use * within one segment and ** across segments.",
+      help: "Completely bypass KMM for matching session keys. Use * within one segment and ** across segments.",
       advanced: true,
     },
     commitTokenThresholdRatio: {
@@ -800,13 +800,13 @@ export const memoryOpenVikingConfigSchema = {
     emitStandardDiagnostics: {
       label: "Standard diagnostics (diag JSON lines)",
       advanced: true,
-      help: "When enabled, emit structured openviking: diag {...} lines for assemble and afterTurn. Disable to reduce log noise.",
+      help: "When enabled, emit structured kmm: diag {...} lines for assemble and afterTurn. Disable to reduce log noise.",
     },
     logFindRequests: {
       label: "Log find requests",
       help:
-        "Log tenant routing: POST /api/v1/search/find (query, target_uri) and session POST .../messages + .../commit (sessionId, X-OpenViking-*). Never logs apiKey. " +
-        "Or set env OPENVIKING_LOG_ROUTING=1 or OPENVIKING_DEBUG=1 (no JSON edit).",
+        "Log tenant routing: POST /api/v1/search/find (query, target_uri) and session POST .../messages + .../commit (sessionId, tenant identity headers). Never logs apiKey. " +
+        "Or set env KMM_LOG_ROUTING=1 or KMM_DEBUG=1 (no JSON edit).",
       advanced: true,
     },
     traceRecall: {
@@ -847,8 +847,8 @@ export const memoryOpenVikingConfigSchema = {
     },
     runtimeQueryConfigPath: {
       label: "Runtime Query Config Path",
-      placeholder: "~/.openclaw/openviking/runtime-query-config.json",
-      help: "Optional JSON file for /ov-query-config runtime overrides. Empty keeps overrides in memory only.",
+      placeholder: "~/.openclaw/kmm/runtime-query-config.json",
+      help: "Optional JSON file for /kmm-query-config runtime overrides. Empty keeps overrides in memory only.",
       advanced: true,
     },
   },

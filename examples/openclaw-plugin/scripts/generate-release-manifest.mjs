@@ -58,8 +58,8 @@ function readInstallCompatibility() {
   for (const field of [
     "minOpenclawVersion",
     "recommendedOpenclawVersion",
-    "minOpenvikingVersion",
-    "recommendedOpenvikingVersion",
+    "minKmmVersion",
+    "recommendedKmmVersion",
   ]) {
     if (!compat[field]) {
       die(`install-manifest.json compatibility.${field} is required`);
@@ -75,7 +75,7 @@ const gitHash = readOption("--git-hash");
 const notesPath = readOption("--notes", "");
 const outPath = readOption("--out", "output/manifest.json");
 const checksumsOut = readOption("--checksums-out", "");
-const bucket = readOption("--bucket", "arkclaw-openviking");
+const bucket = readOption("--bucket", "arkclaw-kmm");
 const region = readOption("--region", "cn-beijing");
 const endpoint = readOption("--endpoint", "tos-cn-beijing.volces.com");
 const releaseDir = readOption("--release-dir", "");
@@ -104,7 +104,7 @@ const artifactEntries = artifacts.map((path) => {
   const stats = statSync(path);
   const entry = {
     name,
-    type: name === "openviking.tgz" ? "package" : "installer",
+    type: name === "kmm.tgz" ? "package" : "installer",
     path: releaseDir ? `${releaseDir}/${name}` : `${environment}/releases/${version}/${name}`,
     size: stats.size,
     sha256: sha256(path),
@@ -122,8 +122,8 @@ const artifactEntries = artifacts.map((path) => {
 const manifest = {
   schemaVersion: "1.0",
   plugin: {
-    id: "openviking",
-    packageName: "@openviking/openclaw-plugin",
+    id: "kmm",
+    packageName: "@kmm/openclaw-plugin",
     version,
   },
   environment,
@@ -143,8 +143,8 @@ const manifest = {
     recommendedOpenclawVersion: installCompatibility.recommendedOpenclawVersion,
     minGatewayVersion: installCompatibility.minOpenclawVersion,
     minNodeVersion: "22.0.0",
-    minOpenvikingVersion: installCompatibility.minOpenvikingVersion,
-    recommendedOpenvikingVersion: installCompatibility.recommendedOpenvikingVersion,
+    minKmmVersion: installCompatibility.minKmmVersion,
+    recommendedKmmVersion: installCompatibility.recommendedKmmVersion,
   },
   artifacts: artifactEntries,
   checksums: {

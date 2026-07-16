@@ -14,7 +14,7 @@ import tos
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 DEFAULT_INSTALL_SH = SCRIPT_DIR / "install.sh"
-DEFAULT_TGZ = SCRIPT_DIR / "openviking.tgz"
+DEFAULT_TGZ = SCRIPT_DIR / "kmm.tgz"
 DEFAULT_MANIFEST = SCRIPT_DIR / "manifest.json"
 
 
@@ -209,7 +209,7 @@ def upload_files(
     install_sh = next((artifact for artifact in artifacts if artifact.name == "install.sh"), None)
     manifest = next((artifact for artifact in artifacts if artifact.name == "manifest.json"), None)
     for release_path in paths:
-        with tempfile.TemporaryDirectory(prefix="openviking-installer-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="kmm-installer-") as tmp:
             tmp_dir = pathlib.Path(tmp)
             stamped_install = (
                 upload_bucket_installer(
@@ -234,7 +234,7 @@ def upload_files(
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Upload OpenViking install.sh, openviking.tgz, and manifest.json to all TOS buckets."
+        description="Upload KMM install.sh, kmm.tgz, and manifest.json to all TOS buckets."
     )
     parser.add_argument("--install-sh", type=pathlib.Path, default=DEFAULT_INSTALL_SH)
     parser.add_argument("--tgz", type=pathlib.Path, default=DEFAULT_TGZ)
@@ -276,7 +276,7 @@ def main() -> int:
                 f"  {release_path}/install.sh:    {public_url(spec, 'install.sh', release_path=release_path)}"
             )
             print(
-                f"  {release_path}/openviking.tgz: {public_url(spec, 'openviking.tgz', release_path=release_path)}"
+                f"  {release_path}/kmm.tgz: {public_url(spec, 'kmm.tgz', release_path=release_path)}"
             )
             print(
                 f"  {release_path}/manifest.json:  {public_url(spec, 'manifest.json', release_path=release_path)}"

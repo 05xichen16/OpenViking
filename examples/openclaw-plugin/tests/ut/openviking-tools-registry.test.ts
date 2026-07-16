@@ -11,19 +11,19 @@ import {
 
 const DEFAULT_TOOL_NAMES = [
   "add_skill",
-  "ov_search",
-  "ov_read",
-  "ov_multi_read",
-  "ov_list",
+  "kmm_search",
+  "kmm_read",
+  "kmm_multi_read",
+  "kmm_list",
   "memory_recall",
-  "ov_recall_trace",
+  "kmm_recall_trace",
   "memory_store",
   "memory_forget",
-  "ov_archive_search",
-  "ov_archive_expand",
-  "openviking_tool_result_read",
-  "openviking_tool_result_search",
-  "openviking_tool_result_list",
+  "kmm_archive_search",
+  "kmm_archive_expand",
+  "kmm_tool_result_read",
+  "kmm_tool_result_search",
+  "kmm_tool_result_list",
 ] as const;
 
 describe("openviking tool registry", () => {
@@ -43,14 +43,14 @@ describe("openviking tool registry", () => {
       all: ["add_resource", ...DEFAULT_TOOL_NAMES],
       default: DEFAULT_TOOL_NAMES,
       memory: ["memory_recall", "memory_store", "memory_forget"],
-      resource_query: ["ov_search", "ov_read", "ov_multi_read", "ov_list"],
+      resource_query: ["kmm_search", "kmm_read", "kmm_multi_read", "kmm_list"],
       import: ["add_resource", "add_skill"],
-      recall_trace: ["ov_recall_trace"],
-      archive: ["ov_archive_search", "ov_archive_expand"],
+      recall_trace: ["kmm_recall_trace"],
+      archive: ["kmm_archive_search", "kmm_archive_expand"],
       tool_result: [
-        "openviking_tool_result_read",
-        "openviking_tool_result_search",
-        "openviking_tool_result_list",
+        "kmm_tool_result_read",
+        "kmm_tool_result_search",
+        "kmm_tool_result_list",
       ],
     });
   });

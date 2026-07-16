@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# 从旧版 memory-openviking 插件升级到新版 openviking 的前置清理脚本
+# 从旧版 memory-openviking 插件升级到新版 kmm 的前置清理脚本
 #
 # 用法：
-#   bash cleanup-legacy-openviking.sh
-#   bash cleanup-legacy-openviking.sh --workdir ~/.openclaw-second  # 指定 OpenClaw 目录
+#   bash cleanup-legacy-kmm.sh
+#   bash cleanup-legacy-kmm.sh --workdir ~/.openclaw-second  # 指定 OpenClaw 目录
 #
 set -euo pipefail
 
@@ -22,7 +22,7 @@ done
 
 CONFIG_FILE="${OPENCLAW_DIR}/openclaw.json"
 LEGACY_PLUGIN_ID="memory-openviking"
-BAK_SUFFIX=".pre-openviking-upgrade.bak"
+BAK_SUFFIX=".pre-kmm-upgrade.bak"
 
 # --- 颜色输出 ---
 info()  { printf '\033[0;32m[INFO] \033[0m%s\n' "$*"; }
@@ -160,8 +160,8 @@ echo ""
 # ============================================================
 info "✓ 前置清理完成"
 info ""
-info "下一步：安装新版 openviking 插件"
-info "  npm install -g openclaw-openviking-setup-helper && ov-install"
+info "下一步：安装新版 kmm 插件"
+info "  npm install -g openclaw-kmm-setup-helper && kmm-install"
 info ""
 info "如需回滚，恢复备份："
 info "  openclaw gateway stop"

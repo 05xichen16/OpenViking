@@ -1,26 +1,26 @@
 {
-  "name": "openclaw-openviking-setup-helper",
+  "name": "openclaw-kmm-setup-helper",
   "version": "2026.6.18",
-  "description": "Setup helper for installing OpenViking memory plugin into OpenClaw",
+  "description": "Setup helper for installing KMM memory plugin into OpenClaw",
   "type": "module",
   "bin": {
-    "openclaw-openviking-setup-helper": "install.js",
-    "openclaw-openviking-install": "install.js",
-    "ov-install": "install.js"
+    "openclaw-kmm-setup-helper": "install.js",
+    "openclaw-kmm-install": "install.js",
+    "kmm-install": "install.js"
   },
   "keywords": [
-    "openviking",
+    "kmm",
     "openclaw",
     "setup",
     "memory",
     "agent",
     "installer"
   ],
-  "author": "OpenViking",
+  "author": "KMM",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/volcengine/OpenViking.git",
+    "url": "",
     "directory": "examples/openclaw-plugin/setup-helper"
   },
   "files": [

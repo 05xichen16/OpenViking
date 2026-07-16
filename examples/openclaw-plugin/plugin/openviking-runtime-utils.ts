@@ -55,7 +55,7 @@ export function makeBypassedToolResult(toolName: string) {
     content: [
       {
         type: "text" as const,
-        text: `OpenViking is bypassed for this session by bypassSessionPatterns; ${toolName} was skipped.`,
+        text: `KMM is bypassed for this session by bypassSessionPatterns; ${toolName} was skipped.`,
       },
     ],
     details: {

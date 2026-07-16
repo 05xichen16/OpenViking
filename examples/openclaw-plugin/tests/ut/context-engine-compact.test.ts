@@ -42,7 +42,7 @@ function makeEngine(commitResult: unknown, opts?: { throwError?: Error }) {
   const resolveAgentId = vi.fn((_sid: string) => "test-agent");
 
   const engine = createMemoryOpenVikingContextEngine({
-    id: "openviking",
+    id: "kmm",
     name: "Test Engine",
     version: "test",
     cfg,
@@ -158,7 +158,7 @@ describe("context-engine commitOVSession()", () => {
     const resolveAgentId = vi.fn((_sid: string) => "test-agent");
 
     const engine = createMemoryOpenVikingContextEngine({
-      id: "openviking",
+      id: "kmm",
       name: "Test Engine",
       version: "test",
       cfg,
@@ -191,7 +191,7 @@ describe("context-engine compact()", () => {
     const resolveAgentId = vi.fn((_sid: string) => "test-agent");
 
     const engine = createMemoryOpenVikingContextEngine({
-      id: "openviking",
+      id: "kmm",
       name: "Test Engine",
       version: "test",
       cfg,
@@ -428,7 +428,7 @@ describe("context-engine compact()", () => {
 
   it("returns compacted=false when commit reports the OV session does not exist", async () => {
     const { engine, client, logger } = makeEngine(null, {
-      throwError: new Error("OpenViking request failed [NOT_FOUND]: Session not found: s-missing"),
+      throwError: new Error("KMM request failed [NOT_FOUND]: Session not found: s-missing"),
     });
 
     const result = await engine.compact({

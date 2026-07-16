@@ -187,11 +187,11 @@ export function parseAddSkillCommandArgs(args: string): AddSkillCommandArgs {
 
 export function parseOVSearchCommandArgs(args: string): OVSearchCommandArgs {
   const parsed = parseFlagArgs(args);
-  // `/ov-search` only accepts a single query string, so positional segments are
+  // `/kmm-search` only accepts a single query string, so positional segments are
   // always re-joined to preserve unquoted multi-word searches.
   const query = parsed.positionals.join(" ").trim();
   if (!query) {
-    throw new Error('Usage: /ov-search "<query>" [--uri URI] [--limit N]');
+    throw new Error('Usage: /kmm-search "<query>" [--uri URI] [--limit N]');
   }
   return {
     query,

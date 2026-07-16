@@ -183,7 +183,7 @@ export function formatConversationsList(
   opts: { total: number; enrichTruncated: number },
 ): string {
   if (rows.length === 0) {
-    return "No OpenViking conversations found for the current user.";
+    return "No KMM conversations found for the current user.";
   }
   const idWidth = Math.max(10, ...rows.map((row) => row.session_id.length));
   const header = `${"#".padEnd(3)}  ${"session_id".padEnd(idWidth)}  ${"updated".padEnd(16)}  ${"msgs".padStart(5)}  agents`;
@@ -263,7 +263,7 @@ export function createOpenVikingConversationsRuntime(
           return { session_id: entry.session_id, modTime, meta };
         } catch (err) {
           deps.logger?.warn?.(
-            `openviking: failed to enrich session ${entry.session_id} for /conversations: ${String(err)}`,
+            `kmm: failed to enrich session ${entry.session_id} for /conversations: ${String(err)}`,
           );
           return { session_id: entry.session_id, modTime, meta: null };
         }
@@ -297,7 +297,7 @@ export function createOpenVikingConversationsRuntime(
         return description ? { ...row, description } : row;
       } catch (err) {
         deps.logger?.warn?.(
-          `openviking: failed to fetch preview for ${row.session_id}: ${String(err)}`,
+          `kmm: failed to fetch preview for ${row.session_id}: ${String(err)}`,
         );
         return row;
       }
@@ -342,7 +342,7 @@ export function createOpenVikingConversationsRuntime(
 
     const { rows } = await computeConversationRows(session);
     if (rows.length === 0) {
-      throw new Error("No OpenViking conversations found to restore. Run /conversations to check.");
+      throw new Error("No KMM conversations found to restore. Run /conversations to check.");
     }
 
     if (selector.kind === "latest") {
@@ -406,7 +406,7 @@ export function createOpenVikingConversationsRuntime(
       .getArchiveMessages(targetSessionId, totalArchives, session.agentId)
       .catch((err) => {
         deps.logger?.warn?.(
-          `openviking: failed to read archives for ${targetSessionId}: ${String(err)}`,
+          `kmm: failed to read archives for ${targetSessionId}: ${String(err)}`,
         );
         return [] as OVMessage[];
       });
@@ -419,7 +419,7 @@ export function createOpenVikingConversationsRuntime(
       messages: fullMessages,
       summaryFallback: ovContext.latest_archive_overview,
       openclawAgentId,
-      label: `OpenViking ${targetSessionId.slice(0, 8)}`,
+      label: `KMM ${targetSessionId.slice(0, 8)}`,
     });
 
     const metaBits: string[] = [];

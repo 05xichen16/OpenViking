@@ -204,27 +204,27 @@ export function createOpenVikingQueryConfigCommandHandler<TSession, TQueryConfig
       const patch = parseQueryConfigPatch(parsed.flags);
       const { params, warnings } = deps.normalizeRuntimeQueryParams(patch as RuntimeQueryParams & Record<string, unknown>);
       if (Object.keys(params).length === 0) {
-        throw new Error("No query config parameters provided for /ov-query-config set");
+        throw new Error("No query config parameters provided for /kmm-query-config set");
       }
       await deps.queryConfigStore.set(scope, queryCtx, params);
       const effective = await deps.queryConfigStore.getEffective(queryCtx);
       return {
-        text: `Updated OpenViking query config (${scope}).${warnings.length ? ` Warnings: ${warnings.join("; ")}` : ""}`,
+        text: `Updated KMM query config (${scope}).${warnings.length ? ` Warnings: ${warnings.join("; ")}` : ""}`,
         details: { scope, params, warnings, effective },
       };
     }
     if (action === "unset") {
       const fields = parsed.positionals.slice(1);
-      if (fields.length === 0) throw new Error("Usage: /ov-query-config unset <field...> [--scope session|claw]");
+      if (fields.length === 0) throw new Error("Usage: /kmm-query-config unset <field...> [--scope session|claw]");
       await deps.queryConfigStore.unset(scope, queryCtx, fields);
       const effective = await deps.queryConfigStore.getEffective(queryCtx);
-      return { text: `Unset OpenViking query config fields (${scope}): ${fields.join(", ")}`, details: { scope, fields, effective } };
+      return { text: `Unset KMM query config fields (${scope}): ${fields.join(", ")}`, details: { scope, fields, effective } };
     }
     if (action === "reset") {
       await deps.queryConfigStore.reset(scope, queryCtx);
       const effective = await deps.queryConfigStore.getEffective(queryCtx);
-      return { text: `Reset OpenViking query config (${scope}).`, details: { scope, effective } };
+      return { text: `Reset KMM query config (${scope}).`, details: { scope, effective } };
     }
-    throw new Error("Usage: /ov-query-config get|set|unset|reset [--scope session|claw] [--recallLimit N] [--candidateLimit N] [--scoreThreshold N] [--resourceTypes user,agent]");
+    throw new Error("Usage: /kmm-query-config get|set|unset|reset [--scope session|claw] [--recallLimit N] [--candidateLimit N] [--scoreThreshold N] [--resourceTypes user,agent]");
   };
 }

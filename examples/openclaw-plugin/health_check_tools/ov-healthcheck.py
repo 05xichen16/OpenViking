@@ -21,10 +21,10 @@ DEFAULT_ACTOR_PEER = "main"
 DEFAULT_SESSION_SCAN_LIMIT = 0
 META_FILE_SUFFIXES = (".abstract.md", ".overview.md")
 
-HEALTHCHECK_PREFIX = "[OPENVIKING-HEALTHCHECK][probe:{probe}] "
+HEALTHCHECK_PREFIX = "[KMM-HEALTHCHECK][probe:{probe}] "
 
 FOLLOW_UP_QUESTION = (
-    "[OPENVIKING-HEALTHCHECK] Based on the earlier probe session above, "
+    "[KMM-HEALTHCHECK] Based on the earlier probe session above, "
     "summarize the backend stack and current project progress in one short sentence."
 )
 FOLLOW_UP_KEYWORDS = ["go", "postgresql", "redis", "70"]
@@ -88,18 +88,18 @@ def build_seed_messages(facts: HealthcheckRunFacts) -> list[str]:
             "Reply briefly."
         ),
         (
-            "[OPENVIKING-HEALTHCHECK] More details for the same session. "
+            "[KMM-HEALTHCHECK] More details for the same session. "
             f"Our Kafka topic is {facts.kafka_topic}, "
             f"the payment callback service runs on {facts.callback_service}, "
             "and the main latency alert is P99 over 450ms for 3 minutes."
         ),
         (
-            "[OPENVIKING-HEALTHCHECK] Additional details. "
+            "[KMM-HEALTHCHECK] Additional details. "
             "The inventory service exhausted its connection pool. "
             "We fixed it by raising max_open_conns from 80 to 160 and by adding a circuit breaker."
         ),
         (
-            "[OPENVIKING-HEALTHCHECK] One preference for this session: "
+            "[KMM-HEALTHCHECK] One preference for this session: "
             f"keep answers concise, put the conclusion first, then the reason if needed, and remember debug tag {facts.debug_tag}."
         ),
     ]
@@ -107,7 +107,7 @@ def build_seed_messages(facts: HealthcheckRunFacts) -> list[str]:
 
 def build_recall_question(facts: HealthcheckRunFacts) -> str:
     return (
-        "[OPENVIKING-HEALTHCHECK] Based on the earlier probe session from this check, "
+        "[KMM-HEALTHCHECK] Based on the earlier probe session from this check, "
         f"reply with the Kafka topic for {facts.project_name} and the payment callback service address in one line."
     )
 
@@ -178,28 +178,28 @@ class Recorder:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="End-to-end healthcheck for the OpenClaw OpenViking plugin.",
+        description="End-to-end healthcheck for the OpenClaw KMM plugin.",
     )
     parser.add_argument(
         "--gateway", default="", help=f"Gateway base URL (default: {DEFAULT_GATEWAY_URL})"
     )
     parser.add_argument(
-        "--openviking",
+        "--kmm",
         default="",
-        help=f"OpenViking base URL (default: {DEFAULT_OPENVIKING_URL})",
+        help=f"KMM base URL (default: {DEFAULT_OPENVIKING_URL})",
     )
     parser.add_argument(
         "--token", default="", help="Gateway bearer token. Auto-discovered when possible."
     )
     parser.add_argument(
-        "--openviking-api-key",
+        "--kmm-api-key",
         default="",
-        help="OpenViking API key. Auto-discovered from plugin config when possible.",
+        help="KMM API key. Auto-discovered from plugin config when possible.",
     )
     parser.add_argument(
         "--actor-peer",
         default="",
-        help=f"OpenViking actor peer for direct inspection requests (default: {DEFAULT_ACTOR_PEER})",
+        help=f"KMM actor peer for direct inspection requests (default: {DEFAULT_ACTOR_PEER})",
     )
     parser.add_argument("--user-id", default="", help="User id for the real conversation session.")
     parser.add_argument(
@@ -214,7 +214,7 @@ def parse_args() -> argparse.Namespace:
         "--capture-wait",
         type=float,
         default=4.0,
-        help="Wait time after chat before reading OpenViking session state.",
+        help="Wait time after chat before reading KMM session state.",
     )
     parser.add_argument(
         "--commit-wait",
@@ -316,7 +316,7 @@ def extract_plugin_entry(config: dict[str, Any]) -> dict[str, Any]:
     entries = plugins.get("entries")
     if not isinstance(entries, dict):
         return {}
-    entry = entries.get("openviking")
+    entry = entries.get("kmm")
     return entry if isinstance(entry, dict) else {}
 
 
@@ -395,7 +395,7 @@ def guess_gateway_url(config: dict[str, Any]) -> str:
 
 
 def guess_openviking_url(plugin_config: dict[str, Any], ov_config: dict[str, Any] | None) -> str:
-    env_url = os.environ.get("OPENVIKING_BASE_URL") or os.environ.get("OPENVIKING_URL")
+    env_url = os.environ.get("KMM_BASE_URL") or os.environ.get("KMM_URL")
     if env_url:
         return env_url.rstrip("/")
     mode = plugin_config.get("mode")
@@ -449,8 +449,8 @@ def openviking_log_path(ov_config: dict[str, Any] | None) -> Path:
         if isinstance(storage, dict):
             workspace = storage.get("workspace")
             if isinstance(workspace, str) and workspace.strip():
-                return Path(workspace).expanduser() / "log" / "openviking.log"
-    return Path.home() / ".openviking" / "data" / "log" / "openviking.log"
+                return Path(workspace).expanduser() / "log" / "kmm.log"
+    return Path.home() / ".kmm" / "data" / "log" / "kmm.log"
 
 
 def discover_gateway_token(config: dict[str, Any] | None) -> str:
@@ -1122,21 +1122,21 @@ def main() -> int:
     if not gateway_url:
         gateway_url = guess_gateway_url(config or {})
 
-    openviking_url = (args.openviking or "").rstrip("/")
+    openviking_url = (args.kmm or "").rstrip("/")
     if not openviking_url:
         openviking_url = guess_openviking_url(plugin_config, ov_config)
 
     token = (args.token or discover_gateway_token(config)).strip()
     gateway_auth_mode = discover_gateway_auth_mode(config)
     openviking_api_key = (
-        args.openviking_api_key
+        args.kmm_api_key
         or resolve_env_placeholders(str(plugin_config.get("apiKey", "")).strip())
         or (
             str(ov_config.get("server", {}).get("root_api_key", "")).strip()
             if isinstance(ov_config, dict)
             else ""
         )
-        or str(os.environ.get("OPENVIKING_API_KEY", "")).strip()
+        or str(os.environ.get("KMM_API_KEY", "")).strip()
     )
     actor_peer = (
         args.actor_peer or str(plugin_config.get("peer_prefix", "")).strip() or DEFAULT_ACTOR_PEER
@@ -1149,9 +1149,9 @@ def main() -> int:
     ov_log_path = openviking_log_path(ov_config)
     should_continue = True
 
-    print(bold("OpenViking Plugin Healthcheck"))
+    print(bold("KMM Plugin Healthcheck"))
     print(f"Gateway: {gateway_url}")
-    print(f"OpenViking: {openviking_url}")
+    print(f"KMM: {openviking_url}")
     print(f"User ID: {user_id}")
     print(f"Probe: {probe}")
     if config_path:
@@ -1171,26 +1171,26 @@ def main() -> int:
 
     if config:
         slot = extract_context_slot(config)
-        if slot == "openviking":
-            recorder.add("PASS", "plugins.slots.contextEngine is openviking")
+        if slot == "kmm":
+            recorder.add("PASS", "plugins.slots.contextEngine is kmm")
         elif slot:
-            recorder.add("FAIL", "plugins.slots.contextEngine is not openviking", slot)
+            recorder.add("FAIL", "plugins.slots.contextEngine is not kmm", slot)
         else:
             recorder.add("WARN", "plugins.slots.contextEngine is missing")
 
         enabled = plugin_entry.get("enabled")
         if enabled is False:
-            recorder.add("FAIL", "plugins.entries.openviking.enabled is false")
+            recorder.add("FAIL", "plugins.entries.kmm.enabled is false")
         elif plugin_entry:
-            recorder.add("PASS", "plugins.entries.openviking entry exists")
+            recorder.add("PASS", "plugins.entries.kmm entry exists")
         else:
-            recorder.add("WARN", "plugins.entries.openviking entry missing")
+            recorder.add("WARN", "plugins.entries.kmm entry missing")
 
         if plugin_config:
             mode = str(plugin_config.get("mode", "remote"))
             recorder.add("INFO", "Plugin mode", mode)
             if ov_config_path:
-                recorder.add("INFO", "OpenViking config discovered", str(ov_config_path))
+                recorder.add("INFO", "KMM config discovered", str(ov_config_path))
             if plugin_config.get("autoCapture") is False:
                 recorder.add(
                     "WARN", "autoCapture is disabled", "afterTurn capture checks are likely to fail"
@@ -1223,9 +1223,9 @@ def main() -> int:
         recorder.add("FAIL", "Gateway health check failed", gateway_url)
 
     if inspector.health():
-        recorder.add("PASS", "OpenViking health check succeeded")
+        recorder.add("PASS", "KMM health check succeeded")
     else:
-        recorder.add("FAIL", "OpenViking health check failed", openviking_url)
+        recorder.add("FAIL", "KMM health check failed", openviking_url)
 
     if recorder.has_failures():
         print()
@@ -1273,7 +1273,7 @@ def main() -> int:
 
     if should_continue:
         print()
-        print(bold("Phase 2: OpenViking session inspection"))
+        print(bold("Phase 2: KMM session inspection"))
         try:
             session_id, _session_detail, session_context = find_session_with_probe(
                 inspector,
@@ -1282,15 +1282,15 @@ def main() -> int:
                 verbose=args.verbose,
             )
         except Exception as exc:
-            recorder.add("FAIL", "Failed to inspect OpenViking sessions", str(exc))
+            recorder.add("FAIL", "Failed to inspect KMM sessions", str(exc))
             session_id = None
             session_context = None
 
         if session_id:
-            recorder.add("PASS", "Probe session located in OpenViking", session_id)
+            recorder.add("PASS", "Probe session located in KMM", session_id)
         else:
             recorder.add(
-                "FAIL", "Probe session not found in OpenViking", "afterTurn capture may be broken"
+                "FAIL", "Probe session not found in KMM", "afterTurn capture may be broken"
             )
 
         if session_context:
@@ -1310,11 +1310,11 @@ def main() -> int:
                     "WARN", "Captured session context contains too few seeded facts", ",".join(hits)
                 )
         else:
-            recorder.add("FAIL", "Failed to read OpenViking session context")
+            recorder.add("FAIL", "Failed to read KMM session context")
 
     if should_continue and not session_id:
         print()
-        print(red("Stopping because no matching OpenViking session was found."))
+        print(red("Stopping because no matching KMM session was found."))
         should_continue = False
 
     if should_continue:
@@ -1324,22 +1324,22 @@ def main() -> int:
             commit_result = inspector.commit(session_id)
         except Exception as exc:
             commit_result = None
-            recorder.add("FAIL", "OpenViking commit request failed", str(exc))
+            recorder.add("FAIL", "KMM commit request failed", str(exc))
 
         if isinstance(commit_result, dict):
             status = str(commit_result.get("status", ""))
             if status == "failed":
                 recorder.add(
                     "FAIL",
-                    "OpenViking commit finished with failure",
+                    "KMM commit finished with failure",
                     str(commit_result.get("error", "")),
                 )
             elif status:
-                recorder.add("PASS", "OpenViking commit accepted", status)
+                recorder.add("PASS", "KMM commit accepted", status)
             else:
-                recorder.add("WARN", "OpenViking commit returned no explicit status")
+                recorder.add("WARN", "KMM commit returned no explicit status")
         elif session_id:
-            recorder.add("FAIL", "OpenViking commit returned no usable payload")
+            recorder.add("FAIL", "KMM commit returned no usable payload")
 
         print(
             f"Waiting up to {args.commit_wait:.0f}s for commit, archive, and memory extraction..."
@@ -1474,7 +1474,7 @@ def main() -> int:
                     fresh_session_id = None
                 if fresh_session_id:
                     recorder.add(
-                        "INFO", "Fresh-session OpenViking session located", fresh_session_id
+                        "INFO", "Fresh-session KMM session located", fresh_session_id
                     )
         else:
             recorder.add(
@@ -1625,10 +1625,10 @@ def main() -> int:
         print(red("Healthcheck failed."))
         print("Suggested next steps:")
         print(
-            "  1. Confirm `openclaw config get plugins.slots.contextEngine` returns `openviking`."
+            "  1. Confirm `openclaw config get plugins.slots.contextEngine` returns `kmm`."
         )
         print("  2. Confirm both `/health` endpoints are reachable.")
-        print("  3. Inspect `openclaw logs --follow` for `openviking:` lines.")
+        print("  3. Inspect `openclaw logs --follow` for `kmm:` lines.")
         print(f"  4. Inspect `{ov_log_path}` for backend errors.")
         return 1
 

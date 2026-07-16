@@ -39,13 +39,13 @@ export type OpenVikingImportRuntimeDeps = {
 function formatResourceImportText(result: AddResourceResult): string {
   const root = result.root_uri ? ` ${result.root_uri}` : "";
   const warnings = result.warnings?.length ? ` Warnings: ${result.warnings.join("; ")}` : "";
-  return `Imported OpenViking resource.${root}${warnings}`.trim();
+  return `Imported KMM resource.${root}${warnings}`.trim();
 }
 
 function formatSkillImportText(result: AddSkillResult): string {
   const uri = result.uri ? ` ${result.uri}` : "";
   const name = result.name ? ` (${result.name})` : "";
-  return `Imported OpenViking skill${name}.${uri}`.trim();
+  return `Imported KMM skill${name}.${uri}`.trim();
 }
 
 export function createOpenVikingImportRuntime(deps: OpenVikingImportRuntimeDeps): {

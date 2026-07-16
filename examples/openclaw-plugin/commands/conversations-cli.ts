@@ -3,7 +3,7 @@
 // (parseConversationsCommandArgs) and runtime (createOpenVikingConversationsRuntime)
 // as the slash command, so list / restore-by-number / resume / prefix behave
 // identically outside the TUI. Runs standalone: reads config from openclaw.json,
-// talks to the OpenViking server directly, and writes restored sessions to the
+// talks to the KMM server directly, and writes restored sessions to the
 // local OpenClaw session store (no running gateway required).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -26,7 +26,7 @@ export type ConversationsCliCommand = {
   action: (fn: (...args: unknown[]) => void | Promise<void>) => ConversationsCliCommand;
 };
 
-/** Read `plugins.entries.openviking.config` from <stateDir>/openclaw.json. */
+/** Read `plugins.entries.kmm.config` from <stateDir>/openclaw.json. */
 export function readOpenVikingRawConfig(stateDir: string): Record<string, unknown> {
   try {
     const parsed = JSON.parse(readFileSync(join(stateDir, "openclaw.json"), "utf8")) as Record<
@@ -35,7 +35,7 @@ export function readOpenVikingRawConfig(stateDir: string): Record<string, unknow
     >;
     const plugins = parsed?.plugins as Record<string, unknown> | undefined;
     const entries = plugins?.entries as Record<string, unknown> | undefined;
-    const entry = entries?.openviking as Record<string, unknown> | undefined;
+    const entry = entries?.kmm as Record<string, unknown> | undefined;
     const config = entry?.config;
     return config && typeof config === "object" && !Array.isArray(config)
       ? (config as Record<string, unknown>)
@@ -82,7 +82,7 @@ export function registerOpenVikingConversationsCommand(ovCmd: ConversationsCliCo
   ovCmd
     .command("conversations [selector...]")
     .description(
-      "List past OpenViking conversations, or restore one into your local OpenClaw sessions. " +
+      "List past KMM conversations, or restore one into your local OpenClaw sessions. " +
         "Examples: `openclaw kmm conversations`, `conversations 3`, `conversations resume`, `conversations <id-prefix>`.",
     )
     .option("--limit <n>", "Max conversations to list")
@@ -102,7 +102,7 @@ export function registerOpenVikingConversationsCommand(ovCmd: ConversationsCliCo
         if (jsonMode) {
           process.stdout.write(`${JSON.stringify({ error: message }, null, 2)}\n`);
         } else {
-          console.error(`OpenViking conversations failed: ${message}`);
+          console.error(`KMM conversations failed: ${message}`);
         }
         process.exitCode = 1;
       };
@@ -122,12 +122,12 @@ export function registerOpenVikingConversationsCommand(ovCmd: ConversationsCliCo
         cfg = memoryOpenVikingConfigSchema.parse(rawCfg);
       } catch (err) {
         fail(
-          `OpenViking is not configured (${err instanceof Error ? err.message : String(err)}). Run: openclaw openviking setup`,
+          `KMM is not configured (${err instanceof Error ? err.message : String(err)}). Run: openclaw kmm setup`,
         );
         return;
       }
       if (!cfg.baseUrl) {
-        fail("OpenViking baseUrl is not set. Run: openclaw openviking setup");
+        fail("KMM baseUrl is not set. Run: openclaw kmm setup");
         return;
       }
 

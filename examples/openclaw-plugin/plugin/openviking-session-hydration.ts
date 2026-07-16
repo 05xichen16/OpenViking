@@ -159,7 +159,7 @@ function withPersistedFields(
     return {
       role: "assistant",
       content: Array.isArray(message.content) ? message.content : [],
-      api: "openviking-restore",
+      api: "kmm-restore",
       provider,
       model,
       usage: {
@@ -208,7 +208,7 @@ export function buildTranscriptEntries(params: {
   if (agentMessages.length === 0 && summaryFallback && summaryFallback.trim()) {
     agentMessages.push({
       role: "user",
-      content: `[Earlier conversation — restored from OpenViking]\n${summaryFallback.trim()}`,
+      content: `[Earlier conversation — restored from KMM]\n${summaryFallback.trim()}`,
     });
   }
 
@@ -291,7 +291,7 @@ export function mergeSessionStoreEntry(
 }
 
 async function writeFileAtomic(path: string, content: string): Promise<void> {
-  const tmp = `${path}.openviking.tmp`;
+  const tmp = `${path}.kmm.tmp`;
   await writeFile(tmp, content, "utf8");
   await rename(tmp, path);
 }
@@ -307,7 +307,7 @@ export type HydrateResult = {
  * Hydrate an OpenViking session into OpenClaw's LOCAL session store so that the
  * native `openclaw tui --session <key>` / `/session <key>` can resume it. Writes
  * two files: the transcript `.jsonl` and an entry in `sessions.json` (the store
- * is backed up to `sessions.json.openviking.bak` before it is rewritten).
+ * is backed up to `sessions.json.kmm.bak` before it is rewritten).
  */
 export async function hydrateSessionToLocalStore(params: {
   ovSessionId: string;
@@ -323,8 +323,8 @@ export async function hydrateSessionToLocalStore(params: {
   provider?: string;
   label?: string;
 }): Promise<HydrateResult> {
-  const model = params.model?.trim() || "openviking-restored";
-  const provider = params.provider?.trim() || "openviking";
+  const model = params.model?.trim() || "kmm-restored";
+  const provider = params.provider?.trim() || "kmm";
   // Write to wherever OpenClaw actually reads its store from (honors session.store),
   // not a hardcoded path — otherwise a custom-store user's restore lands in a dir
   // OpenClaw never reads and the session is silently unresumable.
@@ -358,7 +358,7 @@ export async function hydrateSessionToLocalStore(params: {
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       existing = parsed as SessionsJson;
       // Back up the real store before we rewrite it (recoverable on mishap).
-      await writeFile(`${storePath}.openviking.bak`, JSON.stringify(existing, null, 2), "utf8").catch(() => undefined);
+      await writeFile(`${storePath}.kmm.bak`, JSON.stringify(existing, null, 2), "utf8").catch(() => undefined);
     }
   } catch {
     existing = {};

@@ -67,8 +67,8 @@ function makeEngine(
     : cfg;
 
   const engine = createMemoryOpenVikingContextEngine({
-    id: "openviking",
-    name: "Context Engine (OpenViking)",
+    id: "kmm",
+    name: "Context Engine (KMM)",
     version: "test",
     cfg: localCfg,
     logger,
@@ -149,7 +149,7 @@ describe("context-engine assemble()", () => {
       expect(result.messages[1]).toBe(sourceMessages[1]);
       expect(result.messages[2]?.role).toBe("user");
       expect(result.messages[2]?.content).toMatch(/^<relevant-memories>/);
-      expect(result.messages[2]?.content).toContain("Source: openviking-auto-recall");
+      expect(result.messages[2]?.content).toContain("Source: kmm-auto-recall");
       expect(result.messages[2]?.content).toContain("User prefers Rust for backend tasks.");
       expect(result.messages[2]?.content).toContain("what backend language should we use?");
       expect(result.systemPromptAddition).toBeUndefined();
@@ -825,7 +825,7 @@ describe("context-engine assemble()", () => {
     const resolveAgentId = vi.fn((_s: string) => "agent");
 
     const engine = createMemoryOpenVikingContextEngine({
-      id: "openviking",
+      id: "kmm",
       name: "Test",
       version: "test",
       cfg,

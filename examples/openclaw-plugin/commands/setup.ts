@@ -52,8 +52,8 @@ function readCompatRangeFromManifest(): { min: string; max: string } {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
     const compat = manifest?.compatibility ?? {};
     return {
-      min: String(compat.minOpenvikingVersion ?? ""),
-      max: String(compat.maxOpenvikingVersion ?? ""),
+      min: String(compat.minKmmVersion ?? ""),
+      max: String(compat.maxKmmVersion ?? ""),
     };
   } catch {
     return { min: "", max: "" };
@@ -447,7 +447,7 @@ function getExistingPluginConfig(config: Record<string, unknown>): Record<string
   if (!plugins) return null;
   const entries = plugins.entries as Record<string, unknown> | undefined;
   if (!entries) return null;
-  const entry = entries.openviking as Record<string, unknown> | undefined;
+  const entry = entries.kmm as Record<string, unknown> | undefined;
   if (!entry) return null;
   const cfg = entry.config as Record<string, unknown> | undefined;
   return cfg && cfg.mode ? cfg : null;
@@ -468,13 +468,13 @@ function backupConfig(configPath: string): string | null {
 function ensureInstallRecord(plugins: Record<string, unknown>): void {
   const installs = plugins.installs as Record<string, unknown> | undefined;
   if (installs && typeof installs === "object") {
-    delete installs.openviking;
+    delete installs.kmm;
   }
 
   if (!plugins.allow) plugins.allow = [];
   const allow = plugins.allow as string[];
-  if (!allow.includes("openviking")) {
-    allow.push("openviking");
+  if (!allow.includes("kmm")) {
+    allow.push("kmm");
   }
 }
 
@@ -494,8 +494,8 @@ function writeConfig(
   if (!plugins.entries) plugins.entries = {};
   const entries = plugins.entries as Record<string, unknown>;
 
-  const existingEntry = (entries.openviking as Record<string, unknown>) ?? {};
-  entries.openviking = { ...existingEntry, config: pluginCfg };
+  const existingEntry = (entries.kmm as Record<string, unknown>) ?? {};
+  entries.kmm = { ...existingEntry, config: pluginCfg };
 
   ensureInstallRecord(plugins);
 
@@ -569,13 +569,13 @@ function activateContextEngineSlot(configPath: string, force = false): SlotActiv
 
   const current = slots.contextEngine as string | undefined;
 
-  if (current === "openviking") return { activated: false, replaced: false };
+  if (current === "kmm") return { activated: false, replaced: false };
 
-  if (current && current !== "openviking" && !force) {
+  if (current && current !== "kmm" && !force) {
     return { activated: false, previousOwner: current, replaced: false };
   }
 
-  slots.contextEngine = "openviking";
+  slots.contextEngine = "kmm";
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
   return { activated: true, previousOwner: current || undefined, replaced: !!current };
 }
@@ -585,29 +585,29 @@ function isContextEngineSlotActive(configPath: string): boolean {
   const plugins = config.plugins as Record<string, unknown> | undefined;
   if (!plugins) return false;
   const slots = plugins.slots as Record<string, unknown> | undefined;
-  return slots?.contextEngine === "openviking";
+  return slots?.contextEngine === "kmm";
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerSetupCli(api: any): void {
   if (!api.registerCli) {
-    api.logger.info("openviking: registerCli not available, setup command skipped");
+    api.logger.info("kmm: registerCli not available, setup command skipped");
     return;
   }
 
   api.registerCli(
     ({ program }: RegisterCliArgs) => {
-      const ovCmd = program.command("kmm").description("OpenViking plugin commands (kmm)");
+      const ovCmd = program.command("kmm").description("KMM plugin commands (kmm)");
 
       // Shell-side equivalent of the in-TUI /conversations command.
       registerOpenVikingConversationsCommand(ovCmd);
 
       ovCmd
         .command("setup")
-        .description("Setup OpenViking plugin (supports both interactive and non-interactive modes)")
+        .description("Setup KMM plugin (supports both interactive and non-interactive modes)")
         .option("--reconfigure", "Force re-entry of all configuration values")
         .option("--zh", "Chinese prompts")
-        .option("--base-url <url>", "OpenViking server URL (enables non-interactive mode)")
+        .option("--base-url <url>", "KMM server URL (enables non-interactive mode)")
         .option("--api-key <key>", "API key for authentication")
         .option("--peer-role <role>", "Peer ID role: none, assistant, or person")
         .option("--peer-prefix <prefix>", "Prefix for assistant peer_id values")
@@ -667,7 +667,7 @@ export function registerSetupCli(api: any): void {
           }
 
           console.log("");
-          console.log(`🦣 ${tr(zh, "OpenViking Plugin Setup", "OpenViking 插件配置向导")}`);
+          console.log(`🦣 ${tr(zh, "KMM Plugin Setup", "KMM 插件配置向导")}`);
           console.log("");
 
           const config = readOpenClawConfig(configPath);
@@ -686,8 +686,8 @@ export function registerSetupCli(api: any): void {
                 ));
                 console.log(tr(
                   zh,
-                  "Run `openclaw kmm setup --reconfigure` to configure a remote OpenViking server.",
-                  "请运行 `openclaw kmm setup --reconfigure` 以配置远程 OpenViking 服务。",
+                  "Run `openclaw kmm setup --reconfigure` to configure a remote KMM server.",
+                  "请运行 `openclaw kmm setup --reconfigure` 以配置远程 KMM 服务。",
                 ));
                 console.log("");
                 return;
@@ -754,7 +754,7 @@ export function registerSetupCli(api: any): void {
 
       ovCmd
         .command("status")
-        .description("Show current OpenViking plugin status and connectivity")
+        .description("Show current KMM plugin status and connectivity")
         .option("--zh", "Chinese prompts")
         .option("--json", "Output result as JSON (machine-readable)")
         .action(async (...args: unknown[]) => {
@@ -781,13 +781,13 @@ export function registerSetupCli(api: any): void {
 function printCompatibilityWarning(zh: boolean, health: HealthResult): void {
   if (health.compatibility === "server_too_old") {
     console.log(`  ⚠ ${tr(zh,
-      `Server version ${health.version} is older than recommended (${health.compatRange}). Some features may not work. Please upgrade OpenViking server.`,
-      `服务端版本 ${health.version} 低于推荐范围（${health.compatRange}）。部分功能可能不可用，请升级 OpenViking 服务端。`,
+      `Server version ${health.version} is older than recommended (${health.compatRange}). Some features may not work. Please upgrade KMM server.`,
+      `服务端版本 ${health.version} 低于推荐范围（${health.compatRange}）。部分功能可能不可用，请升级 KMM 服务端。`,
     )}`);
   } else if (health.compatibility === "server_too_new") {
     console.log(`  ⚠ ${tr(zh,
-      `Server version ${health.version} is newer than supported (${health.compatRange}). Please upgrade the OpenViking plugin.`,
-      `服务端版本 ${health.version} 高于插件支持范围（${health.compatRange}）。请升级 OpenViking 插件。`,
+      `Server version ${health.version} is newer than supported (${health.compatRange}). Please upgrade the KMM plugin.`,
+      `服务端版本 ${health.version} 高于插件支持范围（${health.compatRange}）。请升级 KMM 插件。`,
     )}`);
   } else if (health.compatibility === "unknown" && health.ok) {
     console.log(`  ⚠ ${tr(zh,
@@ -938,7 +938,7 @@ async function setupNonInteractive(
 function printSetupResult(zh: boolean, result: SetupResult): void {
   console.log("");
   if (result.success) {
-    console.log(`🦣 ${tr(zh, "OpenViking Plugin Setup Complete", "OpenViking 插件配置完成")}`);
+    console.log(`🦣 ${tr(zh, "KMM Plugin Setup Complete", "KMM 插件配置完成")}`);
     console.log("");
     if (result.config) {
       console.log(`  mode:    ${result.config.mode}`);
@@ -1012,15 +1012,15 @@ async function getStatus(configPath: string): Promise<StatusResult> {
 function printSlotResult(zh: boolean, slot: SlotActivationResult): void {
   if (slot.activated && slot.replaced) {
     console.log(`  ⚠ ${tr(zh,
-      `Replaced context-engine slot: ${slot.previousOwner} → openviking`,
-      `已替换 context-engine 插槽: ${slot.previousOwner} → openviking`,
+      `Replaced context-engine slot: ${slot.previousOwner} → kmm`,
+      `已替换 context-engine 插槽: ${slot.previousOwner} → kmm`,
     )}`);
   } else if (slot.activated) {
-    console.log(`  ✓ ${tr(zh, "Activated context-engine slot: openviking", "已激活 context-engine 插槽: openviking")}`);
-  } else if (slot.previousOwner && slot.previousOwner !== "openviking") {
+    console.log(`  ✓ ${tr(zh, "Activated context-engine slot: kmm", "已激活 context-engine 插槽: kmm")}`);
+  } else if (slot.previousOwner && slot.previousOwner !== "kmm") {
     console.log(`  ⚠ ${tr(zh,
-      `Context-engine slot is owned by "${slot.previousOwner}". Run: openclaw config set plugins.slots.contextEngine openviking`,
-      `context-engine 插槽当前由 "${slot.previousOwner}" 占用。运行: openclaw config set plugins.slots.contextEngine openviking`,
+      `Context-engine slot is owned by "${slot.previousOwner}". Run: openclaw config set plugins.slots.contextEngine kmm`,
+      `context-engine 插槽当前由 "${slot.previousOwner}" 占用。运行: openclaw config set plugins.slots.contextEngine kmm`,
     )}`);
   }
 }
@@ -1048,7 +1048,7 @@ function printKeyProbeWarning(zh: boolean, probe: ApiKeyProbeResult): void {
 
 function printStatus(zh: boolean, result: StatusResult): void {
   console.log("");
-  console.log(`🦣 ${tr(zh, "OpenViking Plugin Status", "OpenViking 插件状态")}`);
+  console.log(`🦣 ${tr(zh, "KMM Plugin Status", "KMM 插件状态")}`);
   console.log("");
 
   if (!result.configured) {
@@ -1103,7 +1103,7 @@ async function setupRemote(
   const defaultPeerPrefix = resolveExistingPeerPrefix(existing);
   const headers = nonEmptyOpenVikingRequestHeaders(existing?.headers);
 
-  const baseUrl = await q(tr(zh, "OpenViking server URL", "OpenViking 服务器地址"), defaultUrl);
+  const baseUrl = await q(tr(zh, "KMM server URL", "KMM 服务器地址"), defaultUrl);
   const apiKey = await q(tr(zh, "API Key (optional)", "API Key（可选）"), defaultApiKey);
 
   let accountId = existing?.accountId ? String(existing.accountId) : "";

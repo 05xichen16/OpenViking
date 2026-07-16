@@ -28,22 +28,22 @@ export function createOpenVikingService({
   registerRecallTraceRoutes,
 }: OpenVikingServiceOptions) {
   return {
-    id: "openviking",
+    id: "kmm",
     start: async (ctx?: unknown) => {
       const runtimeRouteRegistered = registerRecallTraceRoutes(ctx);
       const routeRegistered = recallTraceHttpRoutesRegistered || runtimeRouteRegistered;
       await (await getClient()).healthCheck().catch(() => {});
       logger.info(
-        `openviking: initialized (url: ${cfg.baseUrl}, targetUri: ${cfg.targetUri}, search: hybrid endpoint)`,
+        `kmm: initialized (url: ${cfg.baseUrl}, targetUri: ${cfg.targetUri}, search: hybrid endpoint)`,
       );
       if (routeRegistered) {
-        logger.info("openviking: registered recall trace Gateway routes");
+        logger.info("kmm: registered recall trace Gateway routes");
       } else {
-        logger.warn?.("openviking: recall trace Gateway route adapter unavailable; use ov_recall_trace tool or /ov-recall-trace command");
+        logger.warn?.("kmm: recall trace Gateway route adapter unavailable; use kmm_recall_trace tool or /kmm-recall-trace command");
       }
     },
     stop: () => {
-      logger.info("openviking: stopped");
+      logger.info("kmm: stopped");
     },
   };
 }

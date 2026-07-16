@@ -20,12 +20,12 @@ describe("Volcengine OpenViking one-click install contract", () => {
   it("moves Volcengine configuration flags to the global install script", () => {
     const script = readText("scripts/install.sh");
 
-    expect(script).toContain("OPENVIKING_BASE_URL");
-    expect(script).toContain("OPENVIKING_API_KEY");
-    expect(script).toContain("OPENVIKING_PEER_ROLE");
-    expect(script).toContain("OPENVIKING_PEER_PREFIX");
-    expect(script).toContain("OPENVIKING_ACCOUNT_ID");
-    expect(script).toContain("OPENVIKING_USER_ID");
+    expect(script).toContain("KMM_BASE_URL");
+    expect(script).toContain("KMM_API_KEY");
+    expect(script).toContain("KMM_PEER_ROLE");
+    expect(script).toContain("KMM_PEER_PREFIX");
+    expect(script).toContain("KMM_ACCOUNT_ID");
+    expect(script).toContain("KMM_USER_ID");
     expect(script).toContain("OPENCLAW_STATE_DIR");
   });
 
@@ -41,25 +41,25 @@ describe("Volcengine OpenViking one-click install contract", () => {
   it("writes a protected env file and never prints the raw api key", () => {
     const script = readText("scripts/install.sh");
 
-    expect(script).toContain("openviking.env");
+    expect(script).toContain("kmm.env");
     expect(script).toContain("chmod 600 \"$ENV_FILE\"");
     expect(script).toContain("mask_secret");
     expect(script).toContain("redact_arg");
-    expect(script).toContain("OPENVIKING_RECALL_RESOURCES");
-    expect(script).not.toContain("echo \"$OPENVIKING_API_KEY\"");
+    expect(script).toContain("KMM_RECALL_RESOURCES");
+    expect(script).not.toContain("echo \"$KMM_API_KEY\"");
   });
 
   it("delegates configuration to openclaw setup and verifies status", () => {
     const script = readText("scripts/install.sh");
 
-    expect(script).toContain("openclaw openviking setup");
-    expect(script).toContain("--base-url \"$OPENVIKING_BASE_URL\"");
-    expect(script).toContain("--api-key \"$OPENVIKING_API_KEY\"");
-    expect(script).toContain("--peer-role \"$OPENVIKING_PEER_ROLE\"");
-    expect(script).toContain("--peer-prefix \"$OPENVIKING_PEER_PREFIX\"");
+    expect(script).toContain("openclaw kmm setup");
+    expect(script).toContain("--base-url \"$KMM_BASE_URL\"");
+    expect(script).toContain("--api-key \"$KMM_API_KEY\"");
+    expect(script).toContain("--peer-role \"$KMM_PEER_ROLE\"");
+    expect(script).toContain("--peer-prefix \"$KMM_PEER_PREFIX\"");
     expect(script).toContain("--force-slot");
     expect(script).toContain("openclaw gateway restart");
-    expect(script).toContain("openclaw openviking status --json");
+    expect(script).toContain("openclaw kmm status --json");
     expect(script).toContain("openclaw config get plugins.slots.contextEngine");
   });
 

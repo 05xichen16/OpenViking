@@ -158,9 +158,9 @@ type RecallTraceRouteAdapter = {
 };
 
 const contextEnginePlugin = {
-  id: "openviking",
-  name: "Context Engine (OpenViking)",
-  description: "OpenViking-backed context-engine memory with auto-recall/capture",
+  id: "kmm",
+  name: "Context Engine (KMM)",
+  description: "KMM-backed context-engine memory with auto-recall/capture",
   kind: "context-engine" as const,
   configSchema: memoryOpenVikingConfigSchema,
 
@@ -174,7 +174,7 @@ const contextEnginePlugin = {
 
     if (rawCfg.mode && rawCfg.mode !== "remote") {
       api.logger.warn(
-        `openviking: legacy local mode detected (mode="${String(rawCfg.mode)}"). ` +
+        `kmm: legacy local mode detected (mode="${String(rawCfg.mode)}"). ` +
           "Migrating to remote mode. Please run 'openclaw kmm setup' to configure the remote server.",
       );
       rawCfg.mode = "remote";
@@ -189,7 +189,7 @@ const contextEnginePlugin = {
       cfg = memoryOpenVikingConfigSchema.parse(rawCfg);
     } catch (parseErr) {
       api.logger.warn(
-        `openviking: config parse failed (${parseErr instanceof Error ? parseErr.message : String(parseErr)}). ` +
+        `kmm: config parse failed (${parseErr instanceof Error ? parseErr.message : String(parseErr)}). ` +
           "Plugin loaded in setup-only mode. Run: openclaw kmm setup",
       );
       registerSetupCli(api);

@@ -757,7 +757,7 @@ describe("architecture boundaries", () => {
     const indexSource = readFileSync(join(rootDir, "index.ts"), "utf8");
 
     expect(indexSource).toContain("registerOpenVikingToolResultTools");
-    expect(indexSource).not.toMatch(/name:\s*"openviking_tool_result_/);
+    expect(indexSource).not.toMatch(/name:\s*"kmm_tool_result_/);
     expect(indexSource).not.toContain("ToolResultRef");
     expect(indexSource).not.toContain("parseToolResultRef");
   });
@@ -766,7 +766,7 @@ describe("architecture boundaries", () => {
     const indexSource = readFileSync(join(rootDir, "index.ts"), "utf8");
 
     expect(indexSource).toContain("registerOpenVikingArchiveTools");
-    expect(indexSource).not.toMatch(/name:\s*"ov_archive_(search|expand)"/);
+    expect(indexSource).not.toMatch(/name:\s*"kmm_archive_(search|expand)"/);
     expect(indexSource).not.toContain("grepSessionArchives");
   });
 
@@ -805,7 +805,7 @@ describe("architecture boundaries", () => {
     const indexSource = readFileSync(join(rootDir, "index.ts"), "utf8");
 
     expect(indexSource).toContain("registerOpenVikingQueryTools");
-    expect(indexSource).not.toMatch(/name:\s*"ov_(search|read)"/);
+    expect(indexSource).not.toMatch(/name:\s*"kmm_(search|read)"/);
   });
 
   it("keeps tool enabled-set construction out of the composition root", () => {
@@ -831,7 +831,7 @@ describe("architecture boundaries", () => {
     const indexSource = readFileSync(join(rootDir, "index.ts"), "utf8");
 
     expect(indexSource).toContain("registerOpenVikingRecallTraceTools");
-    expect(indexSource).not.toMatch(/name:\s*"ov_recall_trace"/);
+    expect(indexSource).not.toMatch(/name:\s*"kmm_recall_trace"/);
   });
 
   it("keeps recall trace query and route runtime out of the composition root", () => {
@@ -851,8 +851,8 @@ describe("architecture boundaries", () => {
 
     expect(indexSource).toContain("createOpenVikingCommandDefinitions");
     expect(indexSource).not.toContain("openVikingCommands.push");
-    expect(indexSource).not.toContain("OpenViking add resource failed");
-    expect(indexSource).not.toContain("OpenViking recall trace query failed");
+    expect(indexSource).not.toContain("KMM add resource failed");
+    expect(indexSource).not.toContain("KMM recall trace query failed");
   });
 
   it("keeps slash-command argument parsing out of the composition root", () => {
@@ -963,8 +963,8 @@ describe("architecture boundaries", () => {
 
     expect(indexSource).toContain("createOpenVikingQueryConfigCommandHandler");
     expect(indexSource).not.toContain("parseQueryConfigPatch");
-    expect(indexSource).not.toContain("No query config parameters provided for /ov-query-config set");
-    expect(indexSource).not.toContain("Reset OpenViking query config");
+    expect(indexSource).not.toContain("No query config parameters provided for /kmm-query-config set");
+    expect(indexSource).not.toContain("Reset KMM query config");
   });
 
   it("keeps lifecycle hook handlers out of the composition root", () => {

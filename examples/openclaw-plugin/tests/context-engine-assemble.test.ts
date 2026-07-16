@@ -49,8 +49,8 @@ function makeEngine(contextResult: unknown) {
   const resolveAgentId = vi.fn((sessionId: string) => `agent:${sessionId}`);
 
   const engine = createMemoryOpenVikingContextEngine({
-    id: "openviking",
-    name: "Context Engine (OpenViking)",
+    id: "kmm",
+    name: "Context Engine (KMM)",
     version: "test",
     cfg,
     logger,

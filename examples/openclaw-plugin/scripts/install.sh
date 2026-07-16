@@ -3,14 +3,14 @@
 set -euo pipefail
 
 if [ -z "${BASH_VERSION:-}" ]; then
-  echo "[openviking] ERROR: install.sh requires bash" >&2
+  echo "[kmm] ERROR: install.sh requires bash" >&2
   exit 1
 fi
 
 VERSION="2026.6.3"
 RELEASE_PATH="${INSTALL_RELEASE_PATH:-latest}"
-PLUGIN_ID="openviking"
-PACKAGE_NAME="openviking"
+PLUGIN_ID="kmm"
+PACKAGE_NAME="kmm"
 DEFAULT_BUCKET="arkclaw-ov"
 DEFAULT_REGION="cn-beijing"
 DEFAULT_TOS_BASE_URL=""
@@ -29,19 +29,19 @@ RESTART_GATEWAY=1
 INTERNAL_DOMAIN=1
 TMP_DIR=""
 
-OPENVIKING_BASE_URL="${OPENVIKING_BASE_URL:-}"
-OPENVIKING_API_KEY="${OPENVIKING_API_KEY:-}"
-OPENVIKING_PEER_ROLE="${OPENVIKING_PEER_ROLE:-}"
-OPENVIKING_PEER_PREFIX="${OPENVIKING_PEER_PREFIX:-}"
-OPENVIKING_ACCOUNT_ID="${OPENVIKING_ACCOUNT_ID:-}"
-OPENVIKING_USER_ID="${OPENVIKING_USER_ID:-}"
-OPENVIKING_RECALL_RESOURCES="${OPENVIKING_RECALL_RESOURCES:-0}"
-OPENVIKING_RECALL_TARGET_TYPES="${OPENVIKING_RECALL_TARGET_TYPES:-}"
+KMM_BASE_URL="${KMM_BASE_URL:-}"
+KMM_API_KEY="${KMM_API_KEY:-}"
+KMM_PEER_ROLE="${KMM_PEER_ROLE:-}"
+KMM_PEER_PREFIX="${KMM_PEER_PREFIX:-}"
+KMM_ACCOUNT_ID="${KMM_ACCOUNT_ID:-}"
+KMM_USER_ID="${KMM_USER_ID:-}"
+KMM_RECALL_RESOURCES="${KMM_RECALL_RESOURCES:-0}"
+KMM_RECALL_TARGET_TYPES="${KMM_RECALL_TARGET_TYPES:-}"
 
 OPENCLAW_DIR="$OPENCLAW_STATE_DIR"
 EXTENSION_DIR="$OPENCLAW_DIR/extensions/$PLUGIN_ID"
-if [ "$PLUGIN_ID" = "openviking" ]; then
-  EXTENSION_DIR="$OPENCLAW_DIR/extensions/openviking"
+if [ "$PLUGIN_ID" = "kmm" ]; then
+  EXTENSION_DIR="$OPENCLAW_DIR/extensions/kmm"
 fi
 CONFIG_FILE="$OPENCLAW_DIR/openclaw.json"
 
@@ -51,15 +51,15 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
-trap 'echo "[openviking] ERROR: installation failed" >&2' ERR
+trap 'echo "[kmm] ERROR: installation failed" >&2' ERR
 
 usage() {
   cat <<'EOF'
 Usage: bash install.sh [options]
 
-This simplified installer downloads and installs openviking.tgz from a TOS
+This simplified installer downloads and installs kmm.tgz from a TOS
 directory. By default it downloads:
-  <tos-base-url>/latest/openviking.tgz
+  <tos-base-url>/latest/kmm.tgz
 
 Options:
   --tos-base-url <url>       Override TOS base URL.
@@ -70,20 +70,20 @@ Options:
   --region <region>          Use https://<bucket>.tos-<region>.ivolces.com.
   --internal                 Use ivolces.com domain (default).
   --external                 Use volces.com public domain.
-  --latest                   Install from latest/openviking.tgz (default).
-  --date <date>              Install from <date>/openviking.tgz, e.g. 2026.6.3.
-  --release-path <path>      Install from <path>/openviking.tgz.
+  --latest                   Install from latest/kmm.tgz (default).
+  --date <date>              Install from <date>/kmm.tgz, e.g. 2026.6.3.
+  --release-path <path>      Install from <path>/kmm.tgz.
   --tarball <path>           Install a local tgz instead of downloading.
   --source tos|tarball|local|existing
-                             Install ./openviking.tgz next to this script, or
+                             Install ./kmm.tgz next to this script, or
                              use existing for parse/verify-only smoke checks.
   --source existing          Reuse the currently installed plugin and only run configuration checks.
   --verify-only              Download/validate only; do not install.
   --dry-run                  Print the download/install actions only.
   --no-restart               Do not restart OpenClaw gateway after install.
   --openclaw-state-dir <dir> Override ~/.openclaw.
-  --openviking-base-url <url>
-  --openviking-api-key <key>
+  --kmm-base-url <url>
+  --kmm-api-key <key>
   --peer-role <role>
   --peer-prefix <prefix>
   --account-id <id>
@@ -95,11 +95,11 @@ EOF
 }
 
 info() {
-  echo "[openviking] $*"
+  echo "[kmm] $*"
 }
 
 die() {
-  echo "[openviking] ERROR: $*" >&2
+  echo "[kmm] ERROR: $*" >&2
   exit 1
 }
 
@@ -167,7 +167,7 @@ resolve_tos_base_url() {
 package_url() {
   local base_url
   base_url=$(resolve_tos_base_url)
-  printf '%s/%s/openviking.tgz' "$base_url" "$RELEASE_PATH"
+  printf '%s/%s/kmm.tgz' "$base_url" "$RELEASE_PATH"
 }
 
 manifest_url() {
@@ -185,7 +185,7 @@ download_manifest() {
   local output="$1"
   local manifest_url
   manifest_url=$(manifest_url)
-  info "Downloading OpenViking release manifest: $manifest_url"
+  info "Downloading KMM release manifest: $manifest_url"
   if ! download_url "$manifest_url" "$output"; then
     info "Manifest is unavailable; continuing with direct package download"
     return 1
@@ -223,7 +223,7 @@ mask_secret() {
 
 redact_arg() {
   local value="${1:-}"
-  if [ -n "$OPENVIKING_API_KEY" ] && [ "$value" = "$OPENVIKING_API_KEY" ]; then
+  if [ -n "$KMM_API_KEY" ] && [ "$value" = "$KMM_API_KEY" ]; then
     mask_secret "$value"
   else
     printf '%s' "$value"
@@ -232,7 +232,7 @@ redact_arg() {
 
 run_cmd() {
   if [ "$DRY_RUN" -eq 1 ]; then
-    printf '[openviking] DRY RUN:'
+    printf '[kmm] DRY RUN:'
     for arg in "$@"; do
       printf ' %s' "$(redact_arg "$arg")"
     done
@@ -288,14 +288,14 @@ update_openclaw_config() {
   local jq_filter
   jq_filter='.plugins = (.plugins // {})
 | .plugins.allow = (.plugins.allow // [])
-| .plugins.allow |= (if index("openviking") then . else . + ["openviking"] end)
+| .plugins.allow |= (if index("kmm") then . else . + ["kmm"] end)
 | .plugins.entries = (.plugins.entries // {})
-| .plugins.entries.openviking = (.plugins.entries.openviking // {})
-| .plugins.entries.openviking.enabled = true
-| .plugins.entries.openviking.config = (.plugins.entries.openviking.config // {})'
+| .plugins.entries.kmm = (.plugins.entries.kmm // {})
+| .plugins.entries.kmm.enabled = true
+| .plugins.entries.kmm.config = (.plugins.entries.kmm.config // {})'
 
   if [ -z "$context_engine" ] || [ "$context_engine" = "null" ]; then
-    jq_filter="$jq_filter | .plugins.slots = (.plugins.slots // {}) | .plugins.slots.contextEngine = \"openviking\""
+    jq_filter="$jq_filter | .plugins.slots = (.plugins.slots // {}) | .plugins.slots.contextEngine = \"kmm\""
   fi
 
   local tmp_config="${CONFIG_FILE}.tmp"
@@ -304,7 +304,7 @@ update_openclaw_config() {
 
   if [ -n "$context_engine" ] && [ "$context_engine" != "null" ] && [ "$context_engine" != "$PLUGIN_ID" ]; then
     echo "Existing context engine '$context_engine' was preserved."
-    echo "To switch to OpenViking, run: openclaw config set plugins.slots.contextEngine openviking"
+    echo "To switch to KMM, run: openclaw config set plugins.slots.contextEngine kmm"
   fi
 }
 
@@ -361,54 +361,54 @@ install_package_from_tgz() {
 
 download_and_install() {
   TMP_DIR=$(mktemp -d)
-  local tgz_path="$TMP_DIR/openviking.tgz"
+  local tgz_path="$TMP_DIR/kmm.tgz"
   local manifest_path="$TMP_DIR/manifest.json"
   local url
   url=$(package_url)
 
   download_manifest "$manifest_path" || true
-  info "Downloading OpenViking package: $url"
+  info "Downloading KMM package: $url"
   download_url "$url" "$tgz_path"
   install_package_from_tgz "$tgz_path"
 }
 
-configure_openviking_service() {
-  if [ -z "$OPENVIKING_BASE_URL" ] && [ -z "$OPENVIKING_API_KEY" ]; then
+configure_kmm_service() {
+  if [ -z "$KMM_BASE_URL" ] && [ -z "$KMM_API_KEY" ]; then
     return 0
   fi
-  [ -n "$OPENVIKING_BASE_URL" ] || die "OPENVIKING_BASE_URL is required when OPENVIKING_API_KEY is set"
-  [ -n "$OPENVIKING_API_KEY" ] || die "OPENVIKING_API_KEY is required when OPENVIKING_BASE_URL is set"
+  [ -n "$KMM_BASE_URL" ] || die "KMM_BASE_URL is required when KMM_API_KEY is set"
+  [ -n "$KMM_API_KEY" ] || die "KMM_API_KEY is required when KMM_BASE_URL is set"
 
-  ENV_FILE="$OPENCLAW_DIR/openviking.env"
+  ENV_FILE="$OPENCLAW_DIR/kmm.env"
   if [ "$DRY_RUN" -eq 0 ]; then
     mkdir -p "$OPENCLAW_DIR"
     : > "$ENV_FILE"
-    write_env_line "OPENVIKING_BASE_URL" "$OPENVIKING_BASE_URL"
-    write_env_line "OPENVIKING_API_KEY" "$OPENVIKING_API_KEY"
-    write_env_line "OPENVIKING_PEER_ROLE" "$OPENVIKING_PEER_ROLE"
-    write_env_line "OPENVIKING_PEER_PREFIX" "$OPENVIKING_PEER_PREFIX"
-    write_env_line "OPENVIKING_ACCOUNT_ID" "$OPENVIKING_ACCOUNT_ID"
-    write_env_line "OPENVIKING_USER_ID" "$OPENVIKING_USER_ID"
-    write_env_line "OPENVIKING_RECALL_RESOURCES" "$OPENVIKING_RECALL_RESOURCES"
-    write_env_line "OPENVIKING_RECALL_TARGET_TYPES" "$OPENVIKING_RECALL_TARGET_TYPES"
+    write_env_line "KMM_BASE_URL" "$KMM_BASE_URL"
+    write_env_line "KMM_API_KEY" "$KMM_API_KEY"
+    write_env_line "KMM_PEER_ROLE" "$KMM_PEER_ROLE"
+    write_env_line "KMM_PEER_PREFIX" "$KMM_PEER_PREFIX"
+    write_env_line "KMM_ACCOUNT_ID" "$KMM_ACCOUNT_ID"
+    write_env_line "KMM_USER_ID" "$KMM_USER_ID"
+    write_env_line "KMM_RECALL_RESOURCES" "$KMM_RECALL_RESOURCES"
+    write_env_line "KMM_RECALL_TARGET_TYPES" "$KMM_RECALL_TARGET_TYPES"
     chmod 600 "$ENV_FILE"
   else
     info "DRY RUN: write service env -> $ENV_FILE"
   fi
 
-  info "OpenViking Service URL: $OPENVIKING_BASE_URL"
-  info "OpenViking API Key: $(mask_secret "$OPENVIKING_API_KEY")"
+  info "KMM Service URL: $KMM_BASE_URL"
+  info "KMM API Key: $(mask_secret "$KMM_API_KEY")"
 
-  set -- openclaw openviking setup --base-url "$OPENVIKING_BASE_URL" --api-key "$OPENVIKING_API_KEY" --force-slot
-  [ -z "$OPENVIKING_PEER_ROLE" ] || set -- "$@" --peer-role "$OPENVIKING_PEER_ROLE"
-  [ -z "$OPENVIKING_PEER_PREFIX" ] || set -- "$@" --peer-prefix "$OPENVIKING_PEER_PREFIX"
-  [ -z "$OPENVIKING_ACCOUNT_ID" ] || set -- "$@" --account-id "$OPENVIKING_ACCOUNT_ID"
-  [ -z "$OPENVIKING_USER_ID" ] || set -- "$@" --user-id "$OPENVIKING_USER_ID"
-  if [ "$OPENVIKING_RECALL_RESOURCES" = "1" ] && [ -z "$OPENVIKING_RECALL_TARGET_TYPES" ]; then
+  set -- openclaw kmm setup --base-url "$KMM_BASE_URL" --api-key "$KMM_API_KEY" --force-slot
+  [ -z "$KMM_PEER_ROLE" ] || set -- "$@" --peer-role "$KMM_PEER_ROLE"
+  [ -z "$KMM_PEER_PREFIX" ] || set -- "$@" --peer-prefix "$KMM_PEER_PREFIX"
+  [ -z "$KMM_ACCOUNT_ID" ] || set -- "$@" --account-id "$KMM_ACCOUNT_ID"
+  [ -z "$KMM_USER_ID" ] || set -- "$@" --user-id "$KMM_USER_ID"
+  if [ "$KMM_RECALL_RESOURCES" = "1" ] && [ -z "$KMM_RECALL_TARGET_TYPES" ]; then
     set -- "$@" --recall-target-types resource
-    run_cmd openclaw config set plugins.entries.openviking.config.recallTargetTypes '["resource"]'
+    run_cmd openclaw config set plugins.entries.kmm.config.recallTargetTypes '["resource"]'
   fi
-  [ -z "$OPENVIKING_RECALL_TARGET_TYPES" ] || set -- "$@" --recall-target-types "$OPENVIKING_RECALL_TARGET_TYPES"
+  [ -z "$KMM_RECALL_TARGET_TYPES" ] || set -- "$@" --recall-target-types "$KMM_RECALL_TARGET_TYPES"
   run_cmd "$@"
 }
 
@@ -422,7 +422,7 @@ restart_gateway() {
     if ! run_cmd openclaw gateway restart; then
       echo "Gateway restart failed. Please run manually: openclaw gateway restart" >&2
     fi
-    run_cmd openclaw openviking status --json || true
+    run_cmd openclaw kmm status --json || true
     run_cmd openclaw config get plugins.slots.contextEngine || true
   else
     echo "openclaw CLI was not found. Please install OpenClaw and run: openclaw gateway restart" >&2
@@ -501,36 +501,36 @@ while [ "$#" -gt 0 ]; do
       CONFIG_FILE="$OPENCLAW_DIR/openclaw.json"
       shift 2
       ;;
-    --base-url|--openviking-base-url)
-      OPENVIKING_BASE_URL="${2:-}"
+    --base-url|--kmm-base-url)
+      KMM_BASE_URL="${2:-}"
       shift 2
       ;;
-    --api-key|--openviking-api-key)
-      OPENVIKING_API_KEY="${2:-}"
+    --api-key|--kmm-api-key)
+      KMM_API_KEY="${2:-}"
       shift 2
       ;;
     --peer-role)
-      OPENVIKING_PEER_ROLE="${2:-}"
+      KMM_PEER_ROLE="${2:-}"
       shift 2
       ;;
     --peer-prefix)
-      OPENVIKING_PEER_PREFIX="${2:-}"
+      KMM_PEER_PREFIX="${2:-}"
       shift 2
       ;;
     --account-id)
-      OPENVIKING_ACCOUNT_ID="${2:-}"
+      KMM_ACCOUNT_ID="${2:-}"
       shift 2
       ;;
     --user-id)
-      OPENVIKING_USER_ID="${2:-}"
+      KMM_USER_ID="${2:-}"
       shift 2
       ;;
     --recall-resources)
-      OPENVIKING_RECALL_RESOURCES="${2:-}"
+      KMM_RECALL_RESOURCES="${2:-}"
       shift 2
       ;;
     --recall-target-types)
-      OPENVIKING_RECALL_TARGET_TYPES="${2:-}"
+      KMM_RECALL_TARGET_TYPES="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -549,13 +549,13 @@ while [ "$#" -gt 0 ]; do
 done
 
 echo
-info "Installing OpenViking plugin release $VERSION from $RELEASE_PATH"
+info "Installing KMM plugin release $VERSION from $RELEASE_PATH"
 
 if [ "$install_source" = "existing" ]; then
-  info "Using existing OpenViking installation; no package download or file changes will be performed"
+  info "Using existing KMM installation; no package download or file changes will be performed"
 elif [ "$install_source" = "local" ]; then
   if [ -z "$INSTALL_TARBALL" ]; then
-    INSTALL_TARBALL="$(script_dir)/openviking.tgz"
+    INSTALL_TARBALL="$(script_dir)/kmm.tgz"
   fi
   install_package_from_tgz "$INSTALL_TARBALL"
 else
@@ -563,9 +563,9 @@ else
 fi
 
 if [ "$VERIFY_ONLY" -eq 0 ]; then
-  configure_openviking_service
+  configure_kmm_service
   restart_gateway
 fi
 
 echo
-info "OpenViking plugin install complete"
+info "KMM plugin install complete"

@@ -1,4 +1,4 @@
-# OpenViking Plugin Agent Install Guide
+# KMM Plugin Agent Install Guide
 
 This guide is for AI agents and operator automation. Prefer deterministic commands, parse JSON output, and ask the user only when a choice changes the outcome.
 
@@ -9,29 +9,29 @@ User-facing docs:
 
 ## Identity
 
-This package is the OpenClaw plugin `@openviking/openclaw-plugin`.
+This package is the OpenClaw plugin `@kmm/openclaw-plugin`.
 
 | User intent | Command |
 | --- | --- |
-| Fresh install, latest | `openclaw plugins install clawhub:@openviking/openclaw-plugin` |
-| Upgrade plugin to latest | `openclaw plugins install clawhub:@openviking/openclaw-plugin` |
-| Install or upgrade a specific release | Use the published ClawHub package selector if available; otherwise ask before using backup `ov-install --plugin-version=<REF>` |
-| Upgrade only the plugin | `openclaw plugins install clawhub:@openviking/openclaw-plugin` |
+| Fresh install, latest | `openclaw plugins install clawhub:@kmm/openclaw-plugin` |
+| Upgrade plugin to latest | `openclaw plugins install clawhub:@kmm/openclaw-plugin` |
+| Install or upgrade a specific release | Use the published ClawHub package selector if available; otherwise ask before using backup `kmm-install --plugin-version=<REF>` |
+| Upgrade only the plugin | `openclaw plugins install clawhub:@kmm/openclaw-plugin` |
 | Show installed plugins | `openclaw plugins list` |
-| Backup install when ClawHub is unavailable | `npx -y openclaw-openviking-setup-helper@latest --base-url <URL> [--api-key <KEY>]` |
+| Backup install when ClawHub is unavailable | `npx -y openclaw-kmm-setup-helper@latest --base-url <URL> [--api-key <KEY>]` |
 | Operate on a specific OpenClaw instance | add `--workdir <path>` |
-| Start missing OpenViking server | `openviking-server init && openviking-server doctor && openviking-server` |
+| Start missing KMM server | `kmm-server init && kmm-server doctor && kmm-server` |
 
 Do not install it with:
 
 ```bash
-clawhub install openviking
+clawhub install kmm
 ```
 
 That installs an AgentSkill, not the plugin. The plugin install command is:
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 ```
 
 ## Required Inputs
@@ -40,8 +40,8 @@ Before setup, determine:
 
 | Input | Required | How to get it |
 | --- | --- | --- |
-| OpenViking base URL | Yes | Ask user or read `OPENVIKING_BASE_URL` |
-| API key | Usually | Ask user or read `OPENVIKING_API_KEY` |
+| KMM base URL | Yes | Ask user or read `KMM_BASE_URL` |
+| API key | Usually | Ask user or read `KMM_API_KEY` |
 | Account ID | Only for root API keys | Ask user if setup reports root-key tenant context is needed |
 | User ID | Only for root API keys | Ask user if setup reports root-key tenant context is needed |
 | Slot replacement approval | Only if another context engine owns the slot | Ask user before using `--force-slot` |
@@ -53,16 +53,16 @@ Never silently replace another context engine.
 Use this workflow for normal installs and upgrades from published packages.
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --json
+openclaw plugins install clawhub:@kmm/openclaw-plugin
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --json
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 If the registry prefix is required:
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 ```
 
 ## Setup JSON Contract
@@ -70,7 +70,7 @@ openclaw plugins install clawhub:@openviking/openclaw-plugin
 Run setup with `--json` whenever possible:
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --json
 ```
 
 Branch on the result:
@@ -88,8 +88,8 @@ Branch on the result:
 Root-key retry:
 
 ```bash
-openclaw openviking setup \
-  --base-url <OPENVIKING_URL> \
+openclaw kmm setup \
+  --base-url <KMM_URL> \
   --api-key <ROOT_API_KEY> \
   --account-id <ACCOUNT_ID> \
   --user-id <USER_ID> \
@@ -99,19 +99,19 @@ openclaw openviking setup \
 Custom agent routing prefix (optional; only when the user explicitly requests a prefix):
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --peer-prefix <PREFIX> --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --peer-prefix <PREFIX> --json
 ```
 
 Slot replacement retry, only after user approval:
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --force-slot --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --force-slot --json
 ```
 
 Offline config save, only after user approval:
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --allow-offline --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --allow-offline --json
 ```
 
 ## Status JSON Contract
@@ -119,7 +119,7 @@ openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --allo
 After restart, run:
 
 ```bash
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 Ready state:
@@ -157,15 +157,15 @@ Requirements:
 
 Version boundaries:
 
-- `2026.4.8` is the minimum supported OpenClaw version for the current `@openviking/openclaw-plugin` plugin.
+- `2026.4.8` is the minimum supported OpenClaw version for the current `@kmm/openclaw-plugin` plugin.
 - `2026.5.3` starts requiring compiled JavaScript runtime output during package install when a plugin package declares TypeScript entries.
 - `2026.5.4` and later no longer fall back to `.ts` source for installed/global plugin runtime loading when the compiled JavaScript output is missing; the plugin may be skipped.
 - Published ClawHub packages are built before release and include `dist/*.js`, so normal users do not need to build locally.
-- `ov-install` is the backup/source install path. Use it only after the OpenClaw plugin manager or ClawHub path is unavailable/rate-limited, or when the user explicitly asks to install a source ref. For OpenClaw `>= 2026.5.3`, it builds the plugin during installation.
+- `kmm-install` is the backup/source install path. Use it only after the OpenClaw plugin manager or ClawHub path is unavailable/rate-limited, or when the user explicitly asks to install a source ref. For OpenClaw `>= 2026.5.3`, it builds the plugin during installation.
 
-### 3. Detect or start OpenViking server
+### 3. Detect or start KMM server
 
-The OpenClaw plugin only connects to an OpenViking HTTP server. It does not start the server.
+The OpenClaw plugin only connects to a KMM HTTP server. It does not start the server.
 
 Check the default local server first:
 
@@ -173,16 +173,16 @@ Check the default local server first:
 curl -fsS http://127.0.0.1:1933/health
 ```
 
-If no OpenViking server is running and the user wants a local server:
+If no KMM server is running and the user wants a local server:
 
 ```bash
-pip install openviking --upgrade --force-reinstall
-openviking-server init
-openviking-server doctor
-openviking-server
+pip install kmm --upgrade --force-reinstall
+kmm-server init
+kmm-server doctor
+kmm-server
 ```
 
-Keep `openviking-server` running while OpenClaw uses the plugin. Use `http://127.0.0.1:1933` as the plugin `baseUrl` for the default local setup.
+Keep `kmm-server` running while OpenClaw uses the plugin. Use `http://127.0.0.1:1933` as the plugin `baseUrl` for the default local setup.
 
 For a remote server, confirm the reachable URL with the user and use that URL as `baseUrl`.
 
@@ -202,7 +202,7 @@ If the user has multiple OpenClaw state directories, ask which one to operate on
 Try status first:
 
 ```bash
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 If the command is unavailable, install the plugin first. If it returns `configured: true` and `slotActive: true`, do not reinstall unless the user requested upgrade or reconfigure.
@@ -210,7 +210,7 @@ If the command is unavailable, install the plugin first. If it returns `configur
 Manual inspection:
 
 ```bash
-openclaw config get plugins.entries.openviking.config
+openclaw config get plugins.entries.kmm.config
 openclaw config get plugins.slots.contextEngine
 openclaw plugins list
 ```
@@ -220,32 +220,32 @@ openclaw plugins list
 Fresh install:
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --json
+openclaw plugins install clawhub:@kmm/openclaw-plugin
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --json
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 Reconfigure:
 
 ```bash
-openclaw openviking setup --reconfigure
+openclaw kmm setup --reconfigure
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 Upgrade:
 
 ```bash
-openclaw plugins update openviking
+openclaw plugins update kmm
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 Uninstall:
 
 ```bash
-openclaw plugins uninstall openviking
+openclaw plugins uninstall kmm
 openclaw config set plugins.slots.contextEngine legacy
 openclaw gateway restart
 ```
@@ -257,7 +257,7 @@ Native uninstall may not reset `plugins.slots.contextEngine`. Always run the exp
 Config path:
 
 ```text
-plugins.entries.openviking.config
+plugins.entries.kmm.config
 ```
 
 Core fields:
@@ -265,8 +265,8 @@ Core fields:
 | Field | Meaning |
 | --- | --- |
 | `mode` | Legacy compatibility field. Expected value: `remote`. |
-| `baseUrl` | OpenViking HTTP endpoint |
-| `apiKey` | OpenViking API key |
+| `baseUrl` | KMM HTTP endpoint |
+| `apiKey` | KMM API key |
 | `peer_prefix` | Optional; prefix for OpenClaw agent IDs when set. Interactive setup accepts only letters, digits, `_`, and `-`. If unset, the plugin follows session agent IDs. |
 | `accountId` | Required for root API keys |
 | `userId` | Required for root API keys |
@@ -276,53 +276,53 @@ Core fields:
 Quick verification:
 
 ```bash
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 Manual verification:
 
 ```bash
 openclaw config get plugins.slots.contextEngine
-openclaw config get plugins.entries.openviking.config
+openclaw config get plugins.entries.kmm.config
 openclaw logs --follow
 ```
 
 Expected log signal:
 
 ```text
-openviking: registered context-engine
+kmm: registered context-engine
 ```
 
 Optional end-to-end health check from a repository checkout:
 
 ```bash
-python examples/openclaw-plugin/health_check_tools/ov-healthcheck.py
+python examples/openclaw-plugin/health_check_tools/kmm-healthcheck.py
 ```
 
-## Migrate From ov-install
+## Migrate From kmm-install
 
-If ov-install was previously used, clean up before switching to `openclaw plugins install`:
+If kmm-install was previously used, clean up before switching to `openclaw plugins install`:
 
-Same plugin ID (openviking, >= 0.3.x):
+Same plugin ID (kmm, >= 0.3.x):
 
 ```bash
-rm -rf ~/.openclaw/extensions/openviking/
-openclaw plugins install clawhub:@openviking/openclaw-plugin
-openclaw openviking setup --reconfigure
+rm -rf ~/.openclaw/extensions/kmm/
+openclaw plugins install clawhub:@kmm/openclaw-plugin
+openclaw kmm setup --reconfigure
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
-Old plugin ID (memory-openviking, < 0.3.x):
+Old plugin ID (memory-kmm, < 0.3.x):
 
 ```bash
-openclaw plugins uninstall memory-openviking 2>/dev/null || true
+openclaw plugins uninstall memory-kmm 2>/dev/null || true
 openclaw config set plugins.slots.memory none
-rm -rf ~/.openclaw/extensions/memory-openviking/
-openclaw plugins install clawhub:@openviking/openclaw-plugin
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --json
+rm -rf ~/.openclaw/extensions/memory-kmm/
+openclaw plugins install clawhub:@kmm/openclaw-plugin
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --json
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 Existing config fields are preserved during migration. The new plugin reads old field names at runtime.
@@ -331,25 +331,25 @@ Existing config fields are preserved during migration. The new plugin reads old 
 - `apiKey`
 - `peer_prefix`: optional; interactive setup accepts only letters, digits, `_`, and `-`
 
-## Backup Path: ov-install
+## Backup Path: kmm-install
 
-`ov-install` is the backup path, not the primary user install path. Use it when `openclaw plugins install clawhub:@openviking/openclaw-plugin` cannot reach ClawHub, is rate-limited, or when the user explicitly wants a source ref / Git branch install.
+`kmm-install` is the backup path, not the primary user install path. Use it when `openclaw plugins install clawhub:@kmm/openclaw-plugin` cannot reach ClawHub, is rate-limited, or when the user explicitly wants a source ref / Git branch install.
 
 Backup install:
 
 ```bash
-npm install -g openclaw-openviking-setup-helper
-ov-install
+npm install -g openclaw-kmm-setup-helper
+kmm-install
 ```
 
 Backup/source commands:
 
 | Intent | Command |
 | --- | --- |
-| Install from a source ref | `ov-install --plugin-version=<REF>` |
-| Non-interactive backup install | `ov-install --base-url <URL> --api-key <KEY>` |
-| Target a non-default OpenClaw state directory | `ov-install --workdir <PATH>` |
-| Show helper-tracked version | `ov-install --current-version` |
-| Update helper-managed install | `ov-install --update` |
+| Install from a source ref | `kmm-install --plugin-version=<REF>` |
+| Non-interactive backup install | `kmm-install --base-url <URL> --api-key <KEY>` |
+| Target a non-default OpenClaw state directory | `kmm-install --workdir <PATH>` |
+| Show helper-tracked version | `kmm-install --current-version` |
+| Update helper-managed install | `kmm-install --update` |
 
-For user installs, always try `openclaw plugins install clawhub:@openviking/openclaw-plugin` first. Choose `ov-install` only as the backup path.
+For user installs, always try `openclaw plugins install clawhub:@kmm/openclaw-plugin` first. Choose `kmm-install` only as the backup path.

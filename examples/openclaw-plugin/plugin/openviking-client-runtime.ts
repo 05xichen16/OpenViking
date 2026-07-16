@@ -28,7 +28,7 @@ export function createOpenVikingClientRuntime(options: {
 
   if (cfg.logFindRequests) {
     logger.info(
-      "openviking: routing debug logging enabled (config logFindRequests, or env OPENVIKING_LOG_ROUTING=1 / OPENVIKING_DEBUG=1)",
+      "kmm: routing debug logging enabled (config logFindRequests, or env KMM_LOG_ROUTING=1 / KMM_DEBUG=1)",
     );
   }
 
@@ -39,7 +39,7 @@ export function createOpenVikingClientRuntime(options: {
   };
 
   verboseRoutingInfo(
-    `openviking: loaded plugin config peer_role="${cfg.peer_role}" peer_prefix="${cfg.peer_prefix}" ` +
+    `kmm: loaded plugin config peer_role="${cfg.peer_role}" peer_prefix="${cfg.peer_prefix}" ` +
       `(raw peer_prefix=${JSON.stringify(options.rawPeerPrefix ?? "(missing)")}; ` +
       `${
         cfg.peer_prefix

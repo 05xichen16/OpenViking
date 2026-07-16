@@ -51,7 +51,7 @@ export function getExistingPluginConfig(config: Record<string, unknown>): Record
   if (!plugins) return null;
   const entries = plugins.entries as Record<string, unknown> | undefined;
   if (!entries) return null;
-  const entry = entries.openviking as Record<string, unknown> | undefined;
+  const entry = entries.kmm as Record<string, unknown> | undefined;
   if (!entry) return null;
   const cfg = entry.config as Record<string, unknown> | undefined;
   return cfg && cfg.mode ? cfg : null;
@@ -60,13 +60,13 @@ export function getExistingPluginConfig(config: Record<string, unknown>): Record
 export function ensureInstallRecord(plugins: Record<string, unknown>): void {
   const installs = plugins.installs as Record<string, unknown> | undefined;
   if (installs && typeof installs === "object") {
-    delete installs.openviking;
+    delete installs.kmm;
   }
 
   if (!plugins.allow) plugins.allow = [];
   const allow = plugins.allow as string[];
-  if (!allow.includes("openviking")) {
-    allow.push("openviking");
+  if (!allow.includes("kmm")) {
+    allow.push("kmm");
   }
 }
 
@@ -84,8 +84,8 @@ export function writeOpenVikingConfig(
   if (!plugins.entries) plugins.entries = {};
   const entries = plugins.entries as Record<string, unknown>;
 
-  const existingEntry = (entries.openviking as Record<string, unknown>) ?? {};
-  entries.openviking = { ...existingEntry, config: pluginCfg };
+  const existingEntry = (entries.kmm as Record<string, unknown>) ?? {};
+  entries.kmm = { ...existingEntry, config: pluginCfg };
 
   ensureInstallRecord(plugins);
 
@@ -105,13 +105,13 @@ export function activateContextEngineSlot(
 
   const current = slots.contextEngine as string | undefined;
 
-  if (current === "openviking") return { activated: false, replaced: false };
+  if (current === "kmm") return { activated: false, replaced: false };
 
-  if (current && current !== "openviking" && !force) {
+  if (current && current !== "kmm" && !force) {
     return { activated: false, previousOwner: current, replaced: false };
   }
 
-  slots.contextEngine = "openviking";
+  slots.contextEngine = "kmm";
   io.writeConfig(configPath, config);
   return { activated: true, previousOwner: current || undefined, replaced: !!current };
 }
@@ -121,5 +121,5 @@ export function isContextEngineSlotActive(configPath: string, io: SetupIO = defa
   const plugins = config.plugins as Record<string, unknown> | undefined;
   if (!plugins) return false;
   const slots = plugins.slots as Record<string, unknown> | undefined;
-  return slots?.contextEngine === "openviking";
+  return slots?.contextEngine === "kmm";
 }

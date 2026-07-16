@@ -60,6 +60,6 @@ describe("openviking setup agent prefix validation", () => {
 
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     expect(result.success).toBe(true);
-    expect(config.plugins.entries.openviking.config.recallTargetTypes).toEqual(["resource"]);
+    expect(config.plugins.entries.kmm.config.recallTargetTypes).toEqual(["resource"]);
   });
 });

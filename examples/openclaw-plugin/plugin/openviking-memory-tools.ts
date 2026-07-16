@@ -69,13 +69,13 @@ export function registerOpenVikingMemoryTools(deps: OpenVikingMemoryToolsDeps): 
   deps.registerTool(
     (ctx: OpenVikingMemoryToolContext) => ({
       name: "memory_store",
-      label: "Memory Store (OpenViking)",
+      label: "Memory Store (KMM)",
       description:
-        "Store text in OpenViking memory pipeline by writing to a session and running memory extraction. Use when the user explicitly asks to remember, save, or store an important long-term fact, preference, project, or decision; automatic capture is threshold/commit dependent.",
+        "Store text in KMM memory pipeline by writing to a session and running memory extraction. Use when the user explicitly asks to remember, save, or store an important long-term fact, preference, project, or decision; automatic capture is threshold/commit dependent.",
       parameters: Type.Object({
         text: Type.String({ description: "Information to store as memory source text" }),
         role: Type.Optional(Type.String({ description: "Session role, default user" })),
-        sessionId: Type.Optional(Type.String({ description: "Existing OpenViking session ID" })),
+        sessionId: Type.Optional(Type.String({ description: "Existing KMM session ID" })),
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (deps.isBypassedSession(ctx)) {
@@ -95,7 +95,7 @@ export function registerOpenVikingMemoryTools(deps: OpenVikingMemoryToolsDeps): 
 
         if (deps.logFindRequests) {
           deps.logger.info?.(
-            `openviking: memory_store invoked (textLength=${text?.length ?? 0}, sessionId=${explicitSessionId ?? "auto"})`,
+            `kmm: memory_store invoked (textLength=${text?.length ?? 0}, sessionId=${explicitSessionId ?? "auto"})`,
           );
         }
 
@@ -124,7 +124,7 @@ export function registerOpenVikingMemoryTools(deps: OpenVikingMemoryToolsDeps): 
           const memoriesCount = totalCommitMemories(commitResult);
           if (commitResult.status === "failed") {
             deps.logger.warn(
-              `openviking: memory_store commit failed (sessionId=${sessionId}): ${commitResult.error ?? "unknown"}`,
+              `kmm: memory_store commit failed (sessionId=${sessionId}): ${commitResult.error ?? "unknown"}`,
             );
             return {
               content: [{ type: "text", text: `Memory extraction failed for session ${sessionId}: ${commitResult.error ?? "unknown"}` }],
@@ -139,7 +139,7 @@ export function registerOpenVikingMemoryTools(deps: OpenVikingMemoryToolsDeps): 
           }
           if (commitResult.status === "timeout") {
             deps.logger.warn(
-              `openviking: memory_store commit timed out (sessionId=${sessionId}), task_id=${commitResult.task_id ?? "none"}. Memories may still be extracting in background.`,
+              `kmm: memory_store commit timed out (sessionId=${sessionId}), task_id=${commitResult.task_id ?? "none"}. Memories may still be extracting in background.`,
             );
             return {
               content: [{ type: "text", text: `Memory extraction timed out for session ${sessionId}. It may still complete in the background (task_id=${commitResult.task_id ?? "none"}).` }],
@@ -154,17 +154,17 @@ export function registerOpenVikingMemoryTools(deps: OpenVikingMemoryToolsDeps): 
           }
           if (memoriesCount === 0) {
             deps.logger.warn(
-              `openviking: memory_store committed but 0 memories extracted (sessionId=${sessionId}). ` +
-                "Check OpenViking server logs for embedding/extract errors (e.g. 401 API key, or extraction pipeline).",
+              `kmm: memory_store committed but 0 memories extracted (sessionId=${sessionId}). ` +
+                "Check KMM server logs for embedding/extract errors (e.g. 401 API key, or extraction pipeline).",
             );
           } else {
-            deps.logger.info?.(`openviking: memory_store committed, memories=${memoriesCount}`);
+            deps.logger.info?.(`kmm: memory_store committed, memories=${memoriesCount}`);
           }
           return {
             content: [
               {
                 type: "text",
-                text: `Stored in OpenViking session ${sessionId} and committed ${memoriesCount} memories.`,
+                text: `Stored in KMM session ${sessionId} and committed ${memoriesCount} memories.`,
               },
             ],
             details: {
@@ -177,7 +177,7 @@ export function registerOpenVikingMemoryTools(deps: OpenVikingMemoryToolsDeps): 
             },
           };
         } catch (err) {
-          deps.logger.warn(`openviking: memory_store failed: ${String(err)}`);
+          deps.logger.warn(`kmm: memory_store failed: ${String(err)}`);
           throw err;
         }
       },
@@ -188,7 +188,7 @@ export function registerOpenVikingMemoryTools(deps: OpenVikingMemoryToolsDeps): 
   deps.registerTool(
     (ctx: OpenVikingMemoryToolContext) => ({
       name: "memory_forget",
-      label: "Memory Forget (OpenViking)",
+      label: "Memory Forget (KMM)",
       description:
         "Forget memory by URI, or search then delete when a strong single match is found.",
       parameters: Type.Object({

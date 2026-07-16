@@ -1,25 +1,25 @@
-# 为 OpenClaw 安装 OpenViking
+# 为 OpenClaw 安装 KMM
 
-OpenViking 通过 `@openviking/openclaw-plugin` 插件为 OpenClaw 提供长期记忆、知识库检索、语义搜索和 RAG 上下文能力。
+KMM 通过 `@kmm/openclaw-plugin` 插件为 OpenClaw 提供长期记忆、知识库检索、语义搜索和 RAG 上下文能力。
 
 这份文档同时面向用户和自动化 agent：用户可以按步骤执行，agent 可以按命令和 JSON 结果判断下一步。
 
 ## 不要把插件和 Skill 装混
 
-`@openviking/openclaw-plugin` 是 OpenClaw 插件。
+`@kmm/openclaw-plugin` 是 OpenClaw 插件。
 
 不要用下面这个命令安装本插件：
 
 ```bash
-clawhub install openviking
+clawhub install kmm
 ```
 
-这个命令安装的是名为 `openviking` 的 AgentSkill，不是 OpenClaw 插件。
+这个命令安装的是名为 `kmm` 的 AgentSkill，不是 OpenClaw 插件。
 
 安装插件应使用：
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 ```
 
 ## 前置要求
@@ -29,15 +29,15 @@ openclaw plugins install clawhub:@openviking/openclaw-plugin
 | Node.js | >= 22 |
 | OpenClaw | >= 2026.4.8 |
 
-插件以远程模式连接到已有的 OpenViking 服务。它不会帮你启动 OpenViking server。需要先启动 OpenViking，并保持服务运行，再把插件的 `baseUrl` 指向这个 HTTP 服务。默认本地地址是 `http://127.0.0.1:1933`。
+插件以远程模式连接到已有的 KMM 服务。它不会帮你启动 KMM server。需要先启动 KMM，并保持服务运行，再把插件的 `baseUrl` 指向这个 HTTP 服务。默认本地地址是 `http://127.0.0.1:1933`。
 
 OpenClaw 插件包版本边界：
 
 - `2026.4.8` 是当前插件支持的最低 OpenClaw 版本。
 - `2026.5.3` 开始，OpenClaw 在安装包时会校验 TypeScript 插件入口是否有编译后的 JavaScript 产物。
 - `2026.5.4` 及之后，已安装/全局插件如果缺少编译后的 JavaScript，运行时不再回退加载 `.ts` 源码，插件可能被跳过。
-- 推荐的 `openclaw plugins install clawhub:@openviking/openclaw-plugin` 会安装已经发布并包含 `dist/*.js` 的插件包，普通用户不需要本地编译。
-- `ov-install` 是备用/源码安装路径。当 ClawHub 或 OpenClaw 插件管理器路径不可用、被限流，或者明确需要测试源码 ref 时才使用。目标 OpenClaw `>= 2026.5.3` 时，它会在安装过程中编译插件。
+- 推荐的 `openclaw plugins install clawhub:@kmm/openclaw-plugin` 会安装已经发布并包含 `dist/*.js` 的插件包，普通用户不需要本地编译。
+- `kmm-install` 是备用/源码安装路径。当 ClawHub 或 OpenClaw 插件管理器路径不可用、被限流，或者明确需要测试源码 ref 时才使用。目标 OpenClaw `>= 2026.5.3` 时，它会在安装过程中编译插件。
 
 快速检查：
 
@@ -46,41 +46,41 @@ node -v
 openclaw --version
 ```
 
-## 火山 OpenViking Service 一键接入
+## 火山 KMM Service 一键接入
 
-如果你使用的是火山控制台创建的 OpenViking Service 库，不需要启动本地 `openviking-server`。从控制台复制 OpenViking Service 的 server url、API Key，并按需配置 peer 标识：
+如果你使用的是火山控制台创建的 KMM Service 库，不需要启动本地 `kmm-server`。从控制台复制 KMM Service 的 server url、API Key，并按需配置 peer 标识：
 
 ```bash
-OPENVIKING_BASE_URL="https://api.vikingdb.cn-beijing.volces.com/openviking" \
-OPENVIKING_API_KEY="<your-openviking-service-api-key>" \
+KMM_BASE_URL="https://<your-kmm-server>" \
+KMM_API_KEY="<your-kmm-service-api-key>" \
 bash scripts/install.sh --json
 ```
 
 这条命令会完成：
 
-- 默认从 TOS `latest` 安装 OpenViking 插件。
-- 写入 `$OPENCLAW_STATE_DIR/openviking.env`，默认是 `~/.openclaw/openviking.env`，权限为 `0600`。
-- 调用 `openclaw openviking setup --base-url ... --api-key ...` 写入插件配置。
+- 默认从 TOS `latest` 安装 KMM 插件。
+- 写入 `$OPENCLAW_STATE_DIR/kmm.env`，默认是 `~/.openclaw/kmm.env`，权限为 `0600`。
+- 调用 `openclaw kmm setup --base-url ... --api-key ...` 写入插件配置。
 - 重启 `openclaw gateway`。
-- 执行 `openclaw openviking status --json` 和 `openclaw config get plugins.slots.contextEngine` 验证。
+- 执行 `openclaw kmm status --json` 和 `openclaw config get plugins.slots.contextEngine` 验证。
 
 如果需要把 OpenClaw assistant 说话人写成独立 `peer_id`，并让数据面 recall/search 使用对应 actor peer 视图，可以额外传：
 
 ```bash
-OPENVIKING_BASE_URL="https://api.vikingdb.cn-beijing.volces.com/openviking" \
-OPENVIKING_API_KEY="<your-openviking-service-api-key>" \
-OPENVIKING_PEER_ROLE="assistant" \
-OPENVIKING_PEER_PREFIX="openclaw-prod" \
+KMM_BASE_URL="https://<your-kmm-server>" \
+KMM_API_KEY="<your-kmm-service-api-key>" \
+KMM_PEER_ROLE="assistant" \
+KMM_PEER_PREFIX="openclaw-prod" \
 bash scripts/install.sh --json
 ```
 
 如果使用 root key 或可信服务身份，补充租户信息：
 
 ```bash
-OPENVIKING_BASE_URL="https://api.vikingdb.cn-beijing.volces.com/openviking" \
-OPENVIKING_API_KEY="<root-key>" \
-OPENVIKING_ACCOUNT_ID="<account-id>" \
-OPENVIKING_USER_ID="<user-id>" \
+KMM_BASE_URL="https://<your-kmm-server>" \
+KMM_API_KEY="<root-key>" \
+KMM_ACCOUNT_ID="<account-id>" \
+KMM_USER_ID="<user-id>" \
 bash scripts/install.sh --json
 ```
 
@@ -88,44 +88,44 @@ bash scripts/install.sh --json
 
 ```bash
 sh build.sh
-OPENVIKING_BASE_URL="https://api.vikingdb.cn-beijing.volces.com/openviking" \
-OPENVIKING_API_KEY="<your-openviking-service-api-key>" \
-OPENVIKING_PEER_ROLE="assistant" \
-OPENVIKING_PEER_PREFIX="openclaw-prod" \
-bash output/install.sh --source tarball --tarball output/openviking.tgz --json
+KMM_BASE_URL="https://<your-kmm-server>" \
+KMM_API_KEY="<your-kmm-service-api-key>" \
+KMM_PEER_ROLE="assistant" \
+KMM_PEER_PREFIX="openclaw-prod" \
+bash output/install.sh --source tarball --tarball output/kmm.tgz --json
 ```
 
-接入后，在火山 OpenViking Service 控制台检查：
+接入后，在火山 KMM Service 控制台检查：
 
 - 发送一轮 OpenClaw 对话后，`Session` 下出现原始会话。
 - 触发 `/compact` 或等待 commit 后，`User/memories` 出现长期记忆。
-- 如果配置了 `peer_role=assistant`，数据面 recall/search 会携带对应 `X-OpenViking-Actor-Peer`，session message 仍用 body `peer_id` 做消息归因。
+- 如果配置了 `peer_role=assistant`，数据面 recall/search 会携带对应租户 peer 身份头，session message 仍用 body `peer_id` 做消息归因。
 - 通过手动 `/add-resource` 导入文档、URL 或目录后，`Resources` 下出现对应知识，并可做目录递归检索。Agent 可见的 `add_resource` 工具默认禁用，只有显式设置 `enableAddResourceTool=true` 后才暴露。
 
-## 启动 OpenViking Server
+## 启动 KMM Server
 
-如果 OpenViking 和 OpenClaw 在同一台机器上，最短流程是：
+如果 KMM 和 OpenClaw 在同一台机器上，最短流程是：
 
 ```bash
-pip install openviking --upgrade --force-reinstall
-openviking-server init
-openviking-server doctor
-openviking-server
+pip install kmm --upgrade --force-reinstall
+kmm-server init
+kmm-server doctor
+kmm-server
 ```
 
-`openviking-server init` 用来生成服务端配置，`openviking-server doctor` 用来检查本地模型和 provider 鉴权是否可用，`openviking-server` 才是真正启动 HTTP API 的命令。OpenClaw 使用插件期间，这个服务进程需要一直运行。
+`kmm-server init` 用来生成服务端配置，`kmm-server doctor` 用来检查本地模型和 provider 鉴权是否可用，`kmm-server` 才是真正启动 HTTP API 的命令。OpenClaw 使用插件期间，这个服务进程需要一直运行。
 
 后台启动可以用：
 
 ```bash
-mkdir -p ~/.openviking/data/log
-nohup openviking-server > ~/.openviking/data/log/openviking.log 2>&1 &
+mkdir -p ~/.kmm/data/log
+nohup kmm-server > ~/.kmm/data/log/kmm.log 2>&1 &
 ```
 
-如果 OpenViking 跑在另一台机器上，需要监听可访问的地址和端口，例如：
+如果 KMM 跑在另一台机器上，需要监听可访问的地址和端口，例如：
 
 ```bash
-openviking-server --host 0.0.0.0 --port 1933
+kmm-server --host 0.0.0.0 --port 1933
 ```
 
 然后把 OpenClaw 插件的 `baseUrl` 配成对应地址，例如 `http://your-server:1933`。
@@ -143,13 +143,13 @@ curl http://127.0.0.1:1933/health
 ### 1. 安装插件
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 ```
 
 如果你的 OpenClaw 环境需要显式 registry 前缀，使用：
 
 ```bash
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 ```
 
 ### 2. 配置插件
@@ -157,34 +157,34 @@ openclaw plugins install clawhub:@openviking/openclaw-plugin
 用户交互式配置：
 
 ```bash
-openclaw openviking setup
+openclaw kmm setup
 ```
 
 Agent 非交互配置：
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --json
 ```
 
 示例：
 
 ```bash
-openclaw openviking setup --base-url http://127.0.0.1:1933 --api-key sk-xxx --json
+openclaw kmm setup --base-url http://127.0.0.1:1933 --api-key sk-xxx --json
 ```
 
-`setup` 会写入 `plugins.entries.openviking.config`，并激活 `plugins.slots.contextEngine=openviking`。
+`setup` 会写入 `plugins.entries.kmm.config`，并激活 `plugins.slots.contextEngine=kmm`。
 
-如果 OpenViking 服务暂时不可达，但你仍希望先保存配置：
+如果 KMM 服务暂时不可达，但你仍希望先保存配置：
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --allow-offline --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --allow-offline --json
 ```
 
 如果使用 root API key，可能还需要租户上下文：
 
 ```bash
-openclaw openviking setup \
-  --base-url <OPENVIKING_URL> \
+openclaw kmm setup \
+  --base-url <KMM_URL> \
   --api-key <ROOT_API_KEY> \
   --account-id <ACCOUNT_ID> \
   --user-id <USER_ID> \
@@ -194,13 +194,13 @@ openclaw openviking setup \
 如果已有其他 context engine 占用 slot，setup 默认不会替换。确认要替换时再使用：
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --force-slot --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --force-slot --json
 ```
 
 如需给默认 assistant peer 路由增加前缀，可以额外传：
 
 ```bash
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --peer-role assistant --peer-prefix <PREFIX> --json
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --peer-role assistant --peer-prefix <PREFIX> --json
 ```
 
 ### 3. 重启 OpenClaw Gateway
@@ -214,7 +214,7 @@ openclaw gateway restart
 ### 4. 验证
 
 ```bash
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 期望结果：
@@ -228,11 +228,11 @@ openclaw openviking status --json
 也可以直接查看 OpenClaw 配置：
 
 ```bash
-openclaw config get plugins.entries.openviking.config
+openclaw config get plugins.entries.kmm.config
 openclaw config get plugins.slots.contextEngine
 ```
 
-`plugins.slots.contextEngine` 应输出 `openviking`。
+`plugins.slots.contextEngine` 应输出 `kmm`。
 
 ## Agent 判断规则
 
@@ -251,7 +251,7 @@ Agent 应优先使用 `--json`，并根据这些字段判断下一步：
 插件配置位于：
 
 ```text
-plugins.entries.openviking.config
+plugins.entries.kmm.config
 ```
 
 核心字段：
@@ -259,9 +259,9 @@ plugins.entries.openviking.config
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
 | `mode` | `remote` | 兼容旧配置的字段。当前只支持 remote。 |
-| `baseUrl` | `http://127.0.0.1:1933` | OpenViking HTTP 地址 |
-| `apiKey` | 空 | OpenViking API key |
-| `peer_role` | `assistant` | Peer 身份模式：`none`、`assistant` 或 `person`。Session message 使用 body `peer_id`；数据面 recall/search 使用 `X-OpenViking-Actor-Peer`。 |
+| `baseUrl` | `http://127.0.0.1:1933` | KMM HTTP 地址 |
+| `apiKey` | 空 | KMM API key |
+| `peer_role` | `assistant` | Peer 身份模式：`none`、`assistant` 或 `person`。Session message 使用 body `peer_id`；数据面 recall/search 使用租户 peer 身份头。 |
 | `peer_prefix` | 空 | `peer_role=assistant` 时 assistant `peer_id` / actor peer 值的可选前缀。 |
 | `accountId` | 空 | 使用 root API key 时需要 |
 | `userId` | 空 | 使用 root API key 时需要 |
@@ -269,41 +269,41 @@ plugins.entries.openviking.config
 普通修改优先使用 setup：
 
 ```bash
-openclaw openviking setup --reconfigure
+openclaw kmm setup --reconfigure
 ```
 
 查看当前配置：
 
 ```bash
-openclaw config get plugins.entries.openviking.config
+openclaw config get plugins.entries.kmm.config
 ```
 
 ### 配置参数
 
-插件连接到已有的远端 OpenViking 服务。
+插件连接到已有的远端 KMM 服务。
 
 | 参数 | 默认值 | 含义 |
 | --- | --- | --- |
-| `baseUrl` | `http://127.0.0.1:1933` | 远端 OpenViking 服务地址 |
-| `apiKey` | 空 | 远端 OpenViking API Key；服务端未开启认证时可不填 |
-| `peer_role` | `assistant` | Peer 身份模式：`none`、`assistant` 或 `person`；session message 使用 body `peer_id`，数据面 recall/search 使用 `X-OpenViking-Actor-Peer` |
+| `baseUrl` | `http://127.0.0.1:1933` | 远端 KMM 服务地址 |
+| `apiKey` | 空 | 远端 KMM API Key；服务端未开启认证时可不填 |
+| `peer_role` | `assistant` | Peer 身份模式：`none`、`assistant` 或 `person`；session message 使用 body `peer_id`，数据面 recall/search 使用租户 peer 身份头 |
 | `peer_prefix` | 空 | `peer_role=assistant` 时 assistant `peer_id` / actor peer 值的可选前缀 |
 
 常见设置：
 
 ```bash
-openclaw config set plugins.entries.openviking.config.baseUrl http://your-server:1933
-openclaw config set plugins.entries.openviking.config.apiKey your-api-key
-openclaw config set plugins.entries.openviking.config.peer_role assistant
-openclaw config set plugins.entries.openviking.config.peer_prefix your-prefix
+openclaw config set plugins.entries.kmm.config.baseUrl http://your-server:1933
+openclaw config set plugins.entries.kmm.config.apiKey your-api-key
+openclaw config set plugins.entries.kmm.config.peer_role assistant
+openclaw config set plugins.entries.kmm.config.peer_prefix your-prefix
 ```
 
 ## 升级
 
 ```bash
-openclaw plugins update openviking
+openclaw plugins update kmm
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 确认 `configured` 和 `slotActive` 都是 `true`。
@@ -311,7 +311,7 @@ openclaw openviking status --json
 ## 卸载
 
 ```bash
-openclaw plugins uninstall openviking
+openclaw plugins uninstall kmm
 openclaw config set plugins.slots.contextEngine legacy
 openclaw gateway restart
 ```
@@ -320,23 +320,23 @@ openclaw gateway restart
 
 ## 可选链路健康检查
 
-如果 status 已通过，还想验证 Gateway 到 OpenViking 的完整链路，可以在仓库 checkout 中运行：
+如果 status 已通过，还想验证 Gateway 到 KMM 的完整链路，可以在仓库 checkout 中运行：
 
 ```bash
-python examples/openclaw-plugin/health_check_tools/ov-healthcheck.py
+python examples/openclaw-plugin/health_check_tools/kmm-healthcheck.py
 ```
 
-该脚本会注入一次真实对话，并在 OpenViking 侧验证会话捕获、提交、归档和记忆提取。详见 [health_check_tools/HEALTHCHECK-ZH.md](./health_check_tools/HEALTHCHECK-ZH.md)。
+该脚本会注入一次真实对话，并在 KMM 侧验证会话捕获、提交、归档和记忆提取。详见 [health_check_tools/HEALTHCHECK-ZH.md](./health_check_tools/HEALTHCHECK-ZH.md)。
 
-## 备用路径：ov-install
+## 备用路径：kmm-install
 
-`ov-install` 是备用路径，不是主安装方式。仅当 `openclaw plugins install clawhub:@openviking/openclaw-plugin` 无法访问 ClawHub、被限流，或者你明确需要从 Git 分支/源码 ref 安装测试时使用。
+`kmm-install` 是备用路径，不是主安装方式。仅当 `openclaw plugins install clawhub:@kmm/openclaw-plugin` 无法访问 ClawHub、被限流，或者你明确需要从 Git 分支/源码 ref 安装测试时使用。
 
 先尝试 OpenClaw 插件管理器。如果该路径不可用，再执行：
 
 ```bash
-npm install -g openclaw-openviking-setup-helper
-ov-install
+npm install -g openclaw-kmm-setup-helper
+kmm-install
 ```
 
 常用备用/源码参数：
@@ -346,60 +346,60 @@ ov-install
 | `--workdir PATH` | 指定 OpenClaw state 目录 |
 | `--plugin-version=REF` | 指定插件版本：npm 版本、npm dist-tag 或 Git ref |
 | `--current-version` | 查看 helper 记录的当前版本 |
-| `--base-url URL` | OpenViking 服务器地址（启用非交互模式） |
-| `--api-key KEY` | OpenViking API key |
+| `--base-url URL` | KMM 服务器地址（启用非交互模式） |
+| `--api-key KEY` | KMM API key |
 | `--peer-role ROLE` | Peer role：`none`、`assistant` 或 `person` |
 | `--peer-prefix PREFIX` | assistant `peer_id` / actor peer 值的前缀 |
 | `--update` | 更新 helper 管理的安装 |
 
-面向用户的安装，请先使用 `openclaw plugins install clawhub:@openviking/openclaw-plugin`。只有作为备用路径时才选择 `ov-install`。
+面向用户的安装，请先使用 `openclaw plugins install clawhub:@kmm/openclaw-plugin`。只有作为备用路径时才选择 `kmm-install`。
 
-## 从 ov-install 迁移到 openclaw plugin install
+## 从 kmm-install 迁移到 openclaw plugin install
 
-如果之前通过 `ov-install` 安装了 OpenViking，切换到推荐的 `openclaw plugins install` 安装方式前需要清理。
+如果之前通过 `kmm-install` 安装了 KMM，切换到推荐的 `openclaw plugins install` 安装方式前需要清理。
 
-### 同一插件 ID（openviking，版本 >= 0.3.x）
+### 同一插件 ID（kmm，版本 >= 0.3.x）
 
-ov-install 的 context-engine 部署会将文件写入 `~/.openclaw/extensions/openviking/`。通过 npm 安装后，OpenClaw 可能仍从旧目录加载。清理步骤：
+kmm-install 的 context-engine 部署会将文件写入 `~/.openclaw/extensions/kmm/`。通过 npm 安装后，OpenClaw 可能仍从旧目录加载。清理步骤：
 
 ```bash
-# 删除 ov-install 部署的文件
-rm -rf ~/.openclaw/extensions/openviking/
+# 删除 kmm-install 部署的文件
+rm -rf ~/.openclaw/extensions/kmm/
 
 # 通过 OpenClaw 插件管理器安装
-openclaw plugins install clawhub:@openviking/openclaw-plugin
+openclaw plugins install clawhub:@kmm/openclaw-plugin
 
 # 重新配置（openclaw.json 中的已有配置会保留）
-openclaw openviking setup --reconfigure
+openclaw kmm setup --reconfigure
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 已有的配置字段（`baseUrl`、`apiKey`、`peer_role`、`peer_prefix` 等）会保留。
 
-### 旧插件 ID（memory-openviking，版本 < 0.3.x）
+### 旧插件 ID（memory-kmm，版本 < 0.3.x）
 
 旧版 memory 插件使用了不同的插件 ID 和 slot：
 
 ```bash
 # 卸载旧插件
-openclaw plugins uninstall memory-openviking 2>/dev/null || true
+openclaw plugins uninstall memory-kmm 2>/dev/null || true
 
 # 清理旧 slot 和文件
 openclaw config set plugins.slots.memory none
-rm -rf ~/.openclaw/extensions/memory-openviking/
+rm -rf ~/.openclaw/extensions/memory-kmm/
 
 # 安装新插件
-openclaw plugins install clawhub:@openviking/openclaw-plugin
-openclaw openviking setup --base-url <OPENVIKING_URL> --api-key <API_KEY> --json
+openclaw plugins install clawhub:@kmm/openclaw-plugin
+openclaw kmm setup --base-url <KMM_URL> --api-key <API_KEY> --json
 openclaw gateway restart
-openclaw openviking status --json
+openclaw kmm status --json
 ```
 
 或使用清理脚本：
 
 ```bash
-bash examples/openclaw-plugin/upgrade_scripts/cleanup-memory-openviking.sh
+bash examples/openclaw-plugin/upgrade_scripts/cleanup-memory-kmm.sh
 ```
 
-另见：[INSTALL.md](./INSTALL.md)、[INSTALL-AGENT.md](./INSTALL-AGENT.md) 和 [docs/openviking-tos-install-guide.md](./docs/openviking-tos-install-guide.md)。
+另见：[INSTALL.md](./INSTALL.md)、[INSTALL-AGENT.md](./INSTALL-AGENT.md) 和 [docs/kmm-tos-install-guide.md](./docs/kmm-tos-install-guide.md)。

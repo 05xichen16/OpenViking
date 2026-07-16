@@ -23,7 +23,7 @@ export function createOpenVikingToolRegistrar({
 }: OpenVikingToolRegistrarOptions) {
   return (toolOrFactory: unknown, opts: { name: string }): void => {
     if (!enabledToolNames.has(opts.name)) {
-      logger?.debug?.(`openviking: tool ${opts.name} disabled by config`);
+      logger?.debug?.(`kmm: tool ${opts.name} disabled by config`);
       return;
     }
     api.registerTool(toolOrFactory, opts);

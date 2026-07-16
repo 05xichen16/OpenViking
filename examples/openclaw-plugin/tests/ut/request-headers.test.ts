@@ -47,6 +47,6 @@ describe("OpenViking request headers", () => {
   it("rejects non-string header values", () => {
     expect(() => resolveOpenVikingRequestHeaders({
       headers: { openviking: 123 },
-    })).toThrow("openviking request header openviking must be a string");
+    })).toThrow("kmm request header openviking must be a string");
   });
 });

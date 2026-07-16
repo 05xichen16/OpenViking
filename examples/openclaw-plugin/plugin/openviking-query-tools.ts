@@ -53,13 +53,13 @@ export type OpenVikingQueryToolsDeps = {
 export function registerOpenVikingQueryTools(deps: OpenVikingQueryToolsDeps): void {
   deps.registerTool(
     (ctx: OpenVikingQueryToolContext) => ({
-      name: "ov_search",
-      label: "Search (OpenViking)",
+      name: "kmm_search",
+      label: "Search (KMM)",
       description:
-        "Search OpenViking resources and skills. Use after importing, or when the user asks to search OpenViking resources or skills. " +
-        "Search only returns ranked snippets; call ov_read on exact hit URIs before answering precise questions. " +
-        "When a result is part of a split document or a multi-step procedure, call ov_list on the parent URI to inspect sibling chunks and overview files before answering. " +
-        "Returned viking:// URIs are OpenViking virtual URIs, not local file paths.",
+        "Search KMM resources and skills. Use after importing, or when the user asks to search KMM resources or skills. " +
+        "Search only returns ranked snippets; call kmm_read on exact hit URIs before answering precise questions. " +
+        "When a result is part of a split document or a multi-step procedure, call kmm_list on the parent URI to inspect sibling chunks and overview files before answering. " +
+        "Returned viking:// URIs are KMM virtual URIs, not local file paths.",
       parameters: Type.Object({
         query: Type.String({ description: "Search query" }),
         uri: Type.Optional(Type.String({ description: "Optional search URI. Defaults to resources plus agent skills." })),
@@ -67,7 +67,7 @@ export function registerOpenVikingQueryTools(deps: OpenVikingQueryToolsDeps): vo
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (deps.isBypassedSession(ctx)) {
-          return deps.makeBypassedToolResult("ov_search");
+          return deps.makeBypassedToolResult("kmm_search");
         }
         const session = deps.resolvePluginSessionRouting(ctx);
         return deps.searchOpenViking({
@@ -77,24 +77,24 @@ export function registerOpenVikingQueryTools(deps: OpenVikingQueryToolsDeps): vo
         }, session.agentId, session);
       },
     }),
-    { name: "ov_search" },
+    { name: "kmm_search" },
   );
 
   deps.registerTool(
     (ctx: OpenVikingQueryToolContext) => ({
-      name: "ov_read",
-      label: "Read (OpenViking)",
+      name: "kmm_read",
+      label: "Read (KMM)",
       description:
-        "Read the full original content of one exact OpenViking viking:// URI returned by ov_search, ov_list, or recall traces. " +
-        "Use after ov_search before answering precise documentation, codebase, configuration, or procedural questions. " +
-        "OpenViking URIs are virtual context-database identifiers, not local file paths; do not use filesystem read tools for them. " +
+        "Read the full original content of one exact KMM viking:// URI returned by kmm_search, kmm_list, or recall traces. " +
+        "Use after kmm_search before answering precise documentation, codebase, configuration, or procedural questions. " +
+        "KMM URIs are virtual context-database identifiers, not local file paths; do not use filesystem read tools for them. " +
         "Never pass shortened or display-truncated URIs ending with ... or containing …. Use the exact full URI.",
       parameters: Type.Object({
-        uri: Type.String({ description: "Exact viking:// URI returned by ov_search; pass the full URI, e.g. viking://resources/project-docs/api.md#chunk-3; do not use shortened display text with ... or …." }),
+        uri: Type.String({ description: "Exact viking:// URI returned by kmm_search; pass the full URI, e.g. viking://resources/project-docs/api.md#chunk-3; do not use shortened display text with ... or …." }),
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (deps.isBypassedSession(ctx)) {
-          return deps.makeBypassedToolResult("ov_read");
+          return deps.makeBypassedToolResult("kmm_read");
         }
         const session = deps.resolvePluginSessionRouting(ctx);
         return deps.readOpenVikingContent({
@@ -102,24 +102,24 @@ export function registerOpenVikingQueryTools(deps: OpenVikingQueryToolsDeps): vo
         }, session.agentId);
       },
     }),
-    { name: "ov_read" },
+    { name: "kmm_read" },
   );
 
   deps.registerTool(
     (ctx: OpenVikingQueryToolContext) => ({
-      name: "ov_multi_read",
-      label: "Multi Read (OpenViking)",
+      name: "kmm_multi_read",
+      label: "Multi Read (KMM)",
       description:
-        "Read the full original content of multiple exact OpenViking URIs concurrently. " +
-        "Use after ov_search and ov_list to read an overview plus sibling chunks for split documents or multi-step procedures.",
+        "Read the full original content of multiple exact KMM URIs concurrently. " +
+        "Use after kmm_search and kmm_list to read an overview plus sibling chunks for split documents or multi-step procedures.",
       parameters: Type.Object({
-        uris: Type.Array(Type.String({ description: "Exact OpenViking viking:// URI to read" }), {
-          description: "Exact OpenViking viking:// URIs to read",
+        uris: Type.Array(Type.String({ description: "Exact KMM viking:// URI to read" }), {
+          description: "Exact KMM viking:// URIs to read",
         }),
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (deps.isBypassedSession(ctx)) {
-          return deps.makeBypassedToolResult("ov_multi_read");
+          return deps.makeBypassedToolResult("kmm_multi_read");
         }
         const session = deps.resolvePluginSessionRouting(ctx);
         const uris = Array.isArray((params as { uris?: unknown }).uris)
@@ -128,24 +128,24 @@ export function registerOpenVikingQueryTools(deps: OpenVikingQueryToolsDeps): vo
         return deps.multiReadOpenVikingContent({ uris }, session.agentId);
       },
     }),
-    { name: "ov_multi_read" },
+    { name: "kmm_multi_read" },
   );
 
   deps.registerTool(
     (ctx: OpenVikingQueryToolContext) => ({
-      name: "ov_list",
-      label: "List (OpenViking)",
+      name: "kmm_list",
+      label: "List (KMM)",
       description:
-        "List files and directories under an OpenViking URI. Use after ov_search to inspect a hit's parent directory, sibling chunks, or .overview.md files when search only returns ranked snippets.",
+        "List files and directories under an KMM URI. Use after kmm_search to inspect a hit's parent directory, sibling chunks, or .overview.md files when search only returns ranked snippets.",
       parameters: Type.Object({
-        uri: Type.String({ description: "OpenViking directory URI to list, e.g. viking://resources/project/docs" }),
+        uri: Type.String({ description: "KMM directory URI to list, e.g. viking://resources/project/docs" }),
         recursive: Type.Optional(Type.Boolean({ description: "List nested entries recursively. Default: false" })),
-        simple: Type.Optional(Type.Boolean({ description: "Return only URI entries from OpenViking. Default: false" })),
+        simple: Type.Optional(Type.Boolean({ description: "Return only URI entries from KMM. Default: false" })),
         limit: Type.Optional(Type.Number({ description: "Maximum entries to list. Default: 100" })),
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (deps.isBypassedSession(ctx)) {
-          return deps.makeBypassedToolResult("ov_list");
+          return deps.makeBypassedToolResult("kmm_list");
         }
         const session = deps.resolvePluginSessionRouting(ctx);
         return deps.listOpenVikingDirectory({
@@ -156,6 +156,6 @@ export function registerOpenVikingQueryTools(deps: OpenVikingQueryToolsDeps): vo
         }, session.agentId);
       },
     }),
-    { name: "ov_list" },
+    { name: "kmm_list" },
   );
 }

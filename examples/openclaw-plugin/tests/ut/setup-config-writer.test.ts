@@ -35,9 +35,9 @@ describe("setup config writer service", () => {
     const io = createMemoryIO({
       plugins: {
         allow: ["other"],
-        installs: { openviking: { path: "/legacy" }, other: { path: "/other" } },
+        installs: { kmm: { path: "/legacy" }, other: { path: "/other" } },
         entries: {
-          openviking: { enabled: true, config: { mode: "local", port: 1933 } },
+          kmm: { enabled: true, config: { mode: "local", port: 1933 } },
         },
       },
     });
@@ -50,10 +50,10 @@ describe("setup config writer service", () => {
     expect(io.backups).toEqual(["/tmp/openclaw.json.bak"]);
     expect(io.config).toMatchObject({
       plugins: {
-        allow: ["other", "openviking"],
+        allow: ["other", "kmm"],
         installs: { other: { path: "/other" } },
         entries: {
-          openviking: {
+          kmm: {
             enabled: true,
             config: {
               mode: "remote",
@@ -84,21 +84,21 @@ describe("setup config writer service", () => {
   });
 
   it("detects existing plugin config only when a mode is present", () => {
-    expect(getExistingPluginConfig({ plugins: { entries: { openviking: { config: { mode: "remote" } } } } })).toEqual({
+    expect(getExistingPluginConfig({ plugins: { entries: { kmm: { config: { mode: "remote" } } } } })).toEqual({
       mode: "remote",
     });
-    expect(getExistingPluginConfig({ plugins: { entries: { openviking: { config: { baseUrl: "http://x" } } } } })).toBeNull();
+    expect(getExistingPluginConfig({ plugins: { entries: { kmm: { config: { baseUrl: "http://x" } } } } })).toBeNull();
   });
 
   it("ensures openviking is allowed without duplicating allow entries", () => {
     const plugins: Record<string, unknown> = {
-      allow: ["openviking"],
-      installs: { openviking: { path: "/legacy" } },
+      allow: ["kmm"],
+      installs: { kmm: { path: "/legacy" } },
     };
 
     ensureInstallRecord(plugins);
 
-    expect(plugins.allow).toEqual(["openviking"]);
+    expect(plugins.allow).toEqual(["kmm"]);
     expect(plugins.installs).toEqual({});
   });
 });

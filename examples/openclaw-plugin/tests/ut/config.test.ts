@@ -29,7 +29,7 @@ describe("memoryOpenVikingConfigSchema.parse()", () => {
     expect(cfg.emitStandardDiagnostics).toBe(false);
     expect(cfg.traceRecall).toBe(false);
     expect(cfg.traceRecallPersist).toBe(false);
-    expect(cfg.traceRecallDir).toContain(".openclaw/openviking/recall-traces");
+    expect(cfg.traceRecallDir).toContain(".openclaw/kmm/recall-traces");
     expect(cfg.traceRecallRetentionDays).toBe(14);
     expect(cfg.traceRecallLoadRecentDays).toBe(2);
     expect(cfg.traceRecallMaxEntries).toBe(1000);
@@ -42,8 +42,8 @@ describe("memoryOpenVikingConfigSchema.parse()", () => {
     expect(cfg.recallTargetTypes).toEqual(["user", "agent"]);
     expect(cfg.headers).toEqual({});
     expect(cfg.enableAddResourceTool).toBe(false);
-    expect(cfg.enabledTools).toContain("ov_search");
-    expect(cfg.enabledTools).toContain("ov_read");
+    expect(cfg.enabledTools).toContain("kmm_search");
+    expect(cfg.enabledTools).toContain("kmm_read");
     expect(cfg.enabledTools).not.toContain("add_resource");
     expect(cfg.disabledTools).toContain("add_resource");
     expect(cfg.agentExperience.enabled).toBe(false);
@@ -71,10 +71,10 @@ describe("memoryOpenVikingConfigSchema.parse()", () => {
       disabledTools: "memory_forget",
     });
     expect(cfg.enabledTools).toEqual([
-      "ov_search",
-      "ov_read",
-      "ov_multi_read",
-      "ov_list",
+      "kmm_search",
+      "kmm_read",
+      "kmm_multi_read",
+      "kmm_list",
       "memory_recall",
       "memory_store",
     ]);
@@ -202,7 +202,7 @@ describe("memoryOpenVikingConfigSchema.parse()", () => {
           openviking: 123,
         },
       }),
-    ).toThrow("openviking config headers.openviking must be a string");
+    ).toThrow("kmm config headers.openviking must be a string");
   });
 
   it("throws on unknown agentExperience keys", () => {

@@ -14,8 +14,8 @@ usage() {
   cat <<'EOF'
 Usage: scripts/release-to-tos.sh [options]
 
-Build and publish the simplified OpenViking TOS release bundle:
-  install.sh, openviking.tgz, manifest.json
+Build and publish the simplified KMM TOS release bundle:
+  install.sh, kmm.tgz, manifest.json
 
 Options:
   --release-dir <date>       Date directory to upload, e.g. 2026.6.3.
@@ -105,7 +105,7 @@ node "$ROOT_DIR/scripts/generate-release-manifest.mjs" \
   --version "$VERSION" \
   --tag "$TAG" \
   --git-hash "$GIT_HASH" \
-  --artifact "$ROOT_DIR/output/openviking.tgz" \
+  --artifact "$ROOT_DIR/output/kmm.tgz" \
   --artifact "$ROOT_DIR/output/install.sh" \
   --bucket "arkclaw-ov" \
   --region "cn-beijing" \
@@ -119,7 +119,7 @@ upload_args=(
   "$ROOT_DIR/scripts/upload_tos.py"
   --release-dir "$RELEASE_DIR"
   --install-sh "$ROOT_DIR/output/install.sh"
-  --tgz "$ROOT_DIR/output/openviking.tgz"
+  --tgz "$ROOT_DIR/output/kmm.tgz"
   --manifest "$ROOT_DIR/output/manifest.json"
 )
 if [ "$PUBLISH_LATEST" -eq 1 ]; then

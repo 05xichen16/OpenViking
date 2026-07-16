@@ -386,7 +386,7 @@ export function createOpenVikingRecallTraceRuntime(deps: OpenVikingRecallTraceRu
         score: item.score ?? matched?.score,
         source,
         targetUri: matched?.targetUri,
-        detailUrl: `/api/openviking/uri-detail?uri=${encodeURIComponent(item.uri)}&traceId=${encodeURIComponent(entry.traceId)}`,
+        detailUrl: `/api/kmm/uri-detail?uri=${encodeURIComponent(item.uri)}&traceId=${encodeURIComponent(entry.traceId)}`,
       };
       if (dedupe) {
         const existing = items.findIndex((candidate) => candidate.uri === item.uri);
@@ -446,7 +446,7 @@ export function createOpenVikingRecallTraceRuntime(deps: OpenVikingRecallTraceRu
 
   const formatRecallTraceText = (result: { entries: RecallTraceEntry[]; lookupLayer: string; warnings: string[] }): string => {
     if (result.entries.length === 0) {
-      return `No OpenViking recall traces found (lookupLayer=${result.lookupLayer}).`;
+      return `No KMM recall traces found (lookupLayer=${result.lookupLayer}).`;
     }
     const blocks = result.entries.map((entry, index) => {
       const selected = entry.selected.slice(0, 8)

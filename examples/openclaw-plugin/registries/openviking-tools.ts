@@ -9,19 +9,19 @@ export type OpenVikingToolGroup =
 export type OpenVikingToolName =
   | "add_resource"
   | "add_skill"
-  | "ov_search"
-  | "ov_read"
-  | "ov_multi_read"
-  | "ov_list"
+  | "kmm_search"
+  | "kmm_read"
+  | "kmm_multi_read"
+  | "kmm_list"
   | "memory_recall"
-  | "ov_recall_trace"
+  | "kmm_recall_trace"
   | "memory_store"
   | "memory_forget"
-  | "ov_archive_search"
-  | "ov_archive_expand"
-  | "openviking_tool_result_read"
-  | "openviking_tool_result_search"
-  | "openviking_tool_result_list";
+  | "kmm_archive_search"
+  | "kmm_archive_expand"
+  | "kmm_tool_result_read"
+  | "kmm_tool_result_search"
+  | "kmm_tool_result_list";
 
 export type OpenVikingToolSpec = {
   name: OpenVikingToolName;
@@ -40,19 +40,19 @@ export const OPENVIKING_TOOL_SPECS = [
     requiresLegacyFlag: "enableAddResourceTool",
   },
   { name: "add_skill", group: "import", defaultEnabled: true },
-  { name: "ov_search", group: "resource_query", defaultEnabled: true },
-  { name: "ov_read", group: "resource_query", defaultEnabled: true },
-  { name: "ov_multi_read", group: "resource_query", defaultEnabled: true },
-  { name: "ov_list", group: "resource_query", defaultEnabled: true },
+  { name: "kmm_search", group: "resource_query", defaultEnabled: true },
+  { name: "kmm_read", group: "resource_query", defaultEnabled: true },
+  { name: "kmm_multi_read", group: "resource_query", defaultEnabled: true },
+  { name: "kmm_list", group: "resource_query", defaultEnabled: true },
   { name: "memory_recall", group: "memory", defaultEnabled: true },
-  { name: "ov_recall_trace", group: "recall_trace", defaultEnabled: true },
+  { name: "kmm_recall_trace", group: "recall_trace", defaultEnabled: true },
   { name: "memory_store", group: "memory", defaultEnabled: true },
   { name: "memory_forget", group: "memory", defaultEnabled: true },
-  { name: "ov_archive_search", group: "archive", defaultEnabled: true },
-  { name: "ov_archive_expand", group: "archive", defaultEnabled: true },
-  { name: "openviking_tool_result_read", group: "tool_result", defaultEnabled: true },
-  { name: "openviking_tool_result_search", group: "tool_result", defaultEnabled: true },
-  { name: "openviking_tool_result_list", group: "tool_result", defaultEnabled: true },
+  { name: "kmm_archive_search", group: "archive", defaultEnabled: true },
+  { name: "kmm_archive_expand", group: "archive", defaultEnabled: true },
+  { name: "kmm_tool_result_read", group: "tool_result", defaultEnabled: true },
+  { name: "kmm_tool_result_search", group: "tool_result", defaultEnabled: true },
+  { name: "kmm_tool_result_list", group: "tool_result", defaultEnabled: true },
 ] as const satisfies readonly OpenVikingToolSpec[];
 
 export const OPENVIKING_ALL_TOOL_NAMES = OPENVIKING_TOOL_SPECS.map((spec) => spec.name) as OpenVikingToolName[];

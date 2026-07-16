@@ -2,7 +2,7 @@
   "manifestVersion": "1.0",
   "pluginVersion": "2026.6.18",
   "plugin": {
-    "id": "openviking",
+    "id": "kmm",
     "kind": "context-engine",
     "slot": "contextEngine"
   },
@@ -39,8 +39,8 @@
     "optional": [
       "package-lock.json",
       ".gitignore",
-      "skills/install-openviking-memory/SKILL.md",
-      "skills/openviking-context-database/SKILL.md",
+      "skills/install-kmm-memory/SKILL.md",
+      "skills/kmm-context-database/SKILL.md",
       "INSTALL-AGENT.md"
     ]
   },
@@ -55,7 +55,7 @@
   "compatibility": {
     "minOpenclawVersion": "2026.4.8",
     "recommendedOpenclawVersion": "2026.6.6",
-    "minOpenvikingVersion": "0.4.1",
-    "recommendedOpenvikingVersion": "0.4.1"
+    "minKmmVersion": "0.4.1",
+    "recommendedKmmVersion": "0.4.1"
   }
 }

@@ -74,8 +74,8 @@ function previewText(value: unknown, maxChars: number): string | undefined {
 export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps): void {
   deps.registerTool(
     (ctx: OpenVikingArchiveToolContext) => ({
-      name: "ov_archive_search",
-      label: "Archive Search (OpenViking)",
+      name: "kmm_archive_search",
+      label: "Archive Search (KMM)",
       description:
         "Keyword-grep across all archived original conversation messages of the current session. " +
         "Use this whenever the [Session History Summary] does not contain the specific detail " +
@@ -96,7 +96,7 @@ export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps)
       }),
       async execute(_toolCallId: string, params: Record<string, unknown>) {
         if (deps.isBypassedSession(ctx)) {
-          return deps.makeBypassedToolResult("ov_archive_search");
+          return deps.makeBypassedToolResult("kmm_archive_search");
         }
         deps.rememberSessionAgentId(ctx);
         const sessionId = ctx.sessionId ?? "";
@@ -119,7 +119,7 @@ export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps)
         }
 
         const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        deps.logger?.info?.(`openviking: ov_archive_search query="${query}" escaped="${escapedQuery}" archive=${archiveId ?? "all"} session=${ovSessionId}`);
+        deps.logger?.info?.(`kmm: kmm_archive_search query="${query}" escaped="${escapedQuery}" archive=${archiveId ?? "all"} session=${ovSessionId}`);
 
         try {
           const client = await deps.getClient();
@@ -209,7 +209,7 @@ export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps)
           };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
-          deps.logger?.error?.(`openviking: ov_archive_search error: ${msg}`);
+          deps.logger?.error?.(`kmm: kmm_archive_search error: ${msg}`);
           return {
             content: [{ type: "text", text: `Archive search failed: ${msg}` }],
             details: { error: msg },
@@ -217,12 +217,12 @@ export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps)
         }
       },
     }),
-    { name: "ov_archive_search" },
+    { name: "kmm_archive_search" },
   );
 
   deps.registerTool((ctx: OpenVikingArchiveToolContext) => ({
-    name: "ov_archive_expand",
-    label: "Archive Expand (OpenViking)",
+    name: "kmm_archive_expand",
+    label: "Archive Expand (KMM)",
     description:
       "Retrieve original messages from a compressed session archive. " +
       "Use when a session summary lacks specific details " +
@@ -236,15 +236,15 @@ export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps)
     }),
     async execute(_toolCallId: string, params: Record<string, unknown>) {
       if (deps.isBypassedSession(ctx)) {
-        return deps.makeBypassedToolResult("ov_archive_expand");
+        return deps.makeBypassedToolResult("kmm_archive_expand");
       }
       const session = deps.resolvePluginSessionRouting(ctx);
       const archiveId = String((params as { archiveId?: string }).archiveId ?? "").trim();
       const sessionId = session.sessionId ?? "";
-      deps.logger?.info?.(`openviking: ov_archive_expand invoked (archiveId=${archiveId || "(empty)"}, sessionId=${sessionId || "(empty)"})`);
+      deps.logger?.info?.(`kmm: kmm_archive_expand invoked (archiveId=${archiveId || "(empty)"}, sessionId=${sessionId || "(empty)"})`);
 
       if (!archiveId) {
-        deps.logger?.warn?.("openviking: ov_archive_expand missing archiveId");
+        deps.logger?.warn?.("kmm: kmm_archive_expand missing archiveId");
         return {
           content: [{ type: "text", text: "Error: archiveId is required." }],
           details: { error: "missing_param", param: "archiveId" },
@@ -277,7 +277,7 @@ export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps)
           .map((message) => deps.formatMessage(message))
           .join("\n\n");
 
-        deps.logger?.info?.(`openviking: ov_archive_expand expanded ${detail.archive_id}, messages=${detail.messages.length}, chars=${body.length}, sessionId=${sessionId}`);
+        deps.logger?.info?.(`kmm: kmm_archive_expand expanded ${detail.archive_id}, messages=${detail.messages.length}, chars=${body.length}, sessionId=${sessionId}`);
         return {
           content: [{ type: "text", text: `${header}\n${body}` }],
           details: {
@@ -290,12 +290,12 @@ export function registerOpenVikingArchiveTools(deps: OpenVikingArchiveToolsDeps)
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        deps.logger?.warn?.(`openviking: ov_archive_expand failed (archiveId=${archiveId}, sessionId=${sessionId}): ${msg}`);
+        deps.logger?.warn?.(`kmm: kmm_archive_expand failed (archiveId=${archiveId}, sessionId=${sessionId}): ${msg}`);
         return {
           content: [{ type: "text", text: `Failed to expand ${archiveId}: ${msg}` }],
           details: { error: msg, archiveId, sessionId, ovSessionId: session.ovSessionId },
         };
       }
     },
-  }), { name: "ov_archive_expand" });
+  }), { name: "kmm_archive_expand" });
 }

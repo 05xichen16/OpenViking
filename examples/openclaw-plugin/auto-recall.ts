@@ -20,7 +20,7 @@ import { sanitizeUserTextForCapture } from "./text-utils.js";
 import { estimateTextTokens } from "./token-estimator.js";
 
 const RECALL_QUERY_MAX_CHARS = 4_000;
-export const AUTO_RECALL_SOURCE_MARKER = "Source: openviking-auto-recall";
+export const AUTO_RECALL_SOURCE_MARKER = "Source: kmm-auto-recall";
 
 type Logger = {
   info: (msg: string) => void;
@@ -215,7 +215,7 @@ export function buildRecallContextBlock(memoryLines: string[]): string {
   return [
     "<relevant-memories>",
     AUTO_RECALL_SOURCE_MARKER,
-    "The following OpenViking memories may be relevant:",
+    "The following KMM memories may be relevant:",
     ...memoryLines,
     "</relevant-memories>",
   ].join("\n");
@@ -281,7 +281,7 @@ export function shouldRecallAgentExperience(input: {
   if (!text || text.length < minQueryChars) {
     return { recall: false, score: 0, reason: "query_too_short" };
   }
-  if (/<openviking-context\b/i.test(input.latestUserText)) {
+  if (/<kmm-context\b/i.test(input.latestUserText)) {
     return { recall: false, score: 0, reason: "already_injected" };
   }
 
@@ -333,7 +333,7 @@ export async function buildAutoRecallContext(params: {
 
   const precheck = await quickRecallPrecheck(client, agentId);
   if (!precheck.ok) {
-    verbose?.(`openviking: skipping auto-recall because precheck failed (${precheck.reason})`);
+    verbose?.(`kmm: skipping auto-recall because precheck failed (${precheck.reason})`);
     return { memoryCount: 0, estimatedTokens: 0 };
   }
 
@@ -409,7 +409,7 @@ export async function buildAutoRecallContext(params: {
             ].slice(0, cfg.traceRecallMaxResultsPerSearch),
           });
         } else {
-          logger.warn?.(`openviking: auto-recall search failed: ${String(s.reason)}`);
+          logger.warn?.(`kmm: auto-recall search failed: ${String(s.reason)}`);
           const failedIndex = traceSearches.length;
           const search = searchPlan.searches[failedIndex - searchPlan.skipped.length];
           traceSearches.push({
@@ -494,7 +494,7 @@ export async function buildAutoRecallContext(params: {
 
       if (memoryLines.length === 0) {
         verbose?.(
-          `openviking: skipping auto-recall injection; no complete memories fit maxInjectedChars=${maxInjectedChars}`,
+          `kmm: skipping auto-recall injection; no complete memories fit maxInjectedChars=${maxInjectedChars}`,
         );
         await recordTrace([], 0, 0);
         return { memoryCount: 0, estimatedTokens: 0 };
@@ -502,16 +502,16 @@ export async function buildAutoRecallContext(params: {
 
       const block = buildRecallContextBlock(memoryLines);
       verbose?.(
-        `openviking: injecting ${memoryLines.length} memories (${block.length} chars, ~${estimatedTokens} tokens, maxInjectedChars=${maxInjectedChars})`,
+        `kmm: injecting ${memoryLines.length} memories (${block.length} chars, ~${estimatedTokens} tokens, maxInjectedChars=${maxInjectedChars})`,
       );
       verbose?.(
-        `openviking: inject-detail ${toJsonLog({ count: memories.length, memories: summarizeInjectionMemories(memories) })}`,
+        `kmm: inject-detail ${toJsonLog({ count: memories.length, memories: summarizeInjectionMemories(memories) })}`,
       );
 
       await recordTrace(memories.slice(0, memoryLines.length), memoryLines.length, estimatedTokens);
       return { block, memoryCount: memoryLines.length, estimatedTokens };
     })(),
     cfg.autoRecallTimeoutMs,
-    "openviking: auto-recall search timeout",
+    "kmm: auto-recall search timeout",
   );
 }

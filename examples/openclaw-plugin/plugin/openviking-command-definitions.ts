@@ -222,7 +222,7 @@ export function createOpenVikingCommandDefinitions(
   return [
     {
       name: "add-resource",
-      description: "Add a resource into OpenViking.",
+      description: "Add a resource into KMM.",
       acceptsArgs: true,
       handler: async (ctx: PluginCommandContext) => {
         try {
@@ -233,13 +233,13 @@ export function createOpenVikingCommandDefinitions(
           const input = deps.parseAddResourceCommandArgs(ctx.args ?? "");
           return toCommandResult(await deps.addResourceOpenViking(input, session.agentId));
         } catch (err) {
-          return { text: `OpenViking add resource failed: ${err instanceof Error ? err.message : String(err)}` };
+          return { text: `KMM add resource failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       },
     },
     {
       name: "add-skill",
-      description: "Add a skill into OpenViking.",
+      description: "Add a skill into KMM.",
       acceptsArgs: true,
       handler: async (ctx: PluginCommandContext) => {
         try {
@@ -250,47 +250,47 @@ export function createOpenVikingCommandDefinitions(
           const input = deps.parseAddSkillCommandArgs(ctx.args ?? "");
           return toCommandResult(await deps.addSkillOpenViking(input, session.agentId));
         } catch (err) {
-          return { text: `OpenViking add skill failed: ${err instanceof Error ? err.message : String(err)}` };
+          return { text: `KMM add skill failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       },
     },
     {
-      name: "ov-search",
-      description: "Search OpenViking resources and skills.",
+      name: "kmm-search",
+      description: "Search KMM resources and skills.",
       acceptsArgs: true,
       handler: async (ctx: PluginCommandContext) => {
         try {
           if (deps.isBypassedSession(ctx)) {
-            return toCommandResult(deps.makeBypassedToolResult("ov_search"));
+            return toCommandResult(deps.makeBypassedToolResult("kmm_search"));
           }
           const session = deps.resolvePluginSessionRouting(ctx);
           const input = deps.parseOVSearchCommandArgs(ctx.args ?? "");
           return toCommandResult(await deps.searchOpenViking(input, session.agentId, session));
         } catch (err) {
-          return { text: `OpenViking search failed: ${err instanceof Error ? err.message : String(err)}` };
+          return { text: `KMM search failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       },
     },
     {
-      name: "ov-query-config",
-      description: "Get or set runtime OpenViking query parameters for the current claw/session.",
+      name: "kmm-query-config",
+      description: "Get or set runtime KMM query parameters for the current claw/session.",
       acceptsArgs: true,
       handler: async (ctx: PluginCommandContext) => {
         try {
           return await deps.handleQueryConfigCommand(ctx);
         } catch (err) {
-          return { text: `OpenViking query config failed: ${err instanceof Error ? err.message : String(err)}` };
+          return { text: `KMM query config failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       },
     },
     {
-      name: "ov-recall-trace",
-      description: "Query OpenViking recall trace records.",
+      name: "kmm-recall-trace",
+      description: "Query KMM recall trace records.",
       acceptsArgs: true,
       handler: async (ctx: PluginCommandContext) => {
         try {
           if (deps.isBypassedSession(ctx)) {
-            return toCommandResult(deps.makeBypassedToolResult("ov_recall_trace"));
+            return toCommandResult(deps.makeBypassedToolResult("kmm_recall_trace"));
           }
           const session = deps.resolvePluginSessionRouting(ctx);
           const input = parseRecallTraceCommandArgs(ctx.args ?? "");
@@ -300,13 +300,13 @@ export function createOpenVikingCommandDefinitions(
             details: { count: result.entries.length, lookupLayer: result.lookupLayer, warnings: result.warnings, entries: result.entries },
           };
         } catch (err) {
-          return { text: `OpenViking recall trace query failed: ${err instanceof Error ? err.message : String(err)}` };
+          return { text: `KMM recall trace query failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       },
     },
     {
       name: "conversations",
-      description: "List past OpenViking conversations, or restore one's full context by id.",
+      description: "List past KMM conversations, or restore one's full context by id.",
       acceptsArgs: true,
       handler: async (ctx: PluginCommandContext) => {
         try {
@@ -317,7 +317,7 @@ export function createOpenVikingCommandDefinitions(
           const input = deps.parseConversationsCommandArgs(ctx.args ?? "");
           return toCommandResult(await deps.runConversations(input, session));
         } catch (err) {
-          return { text: `OpenViking conversations failed: ${err instanceof Error ? err.message : String(err)}` };
+          return { text: `KMM conversations failed: ${err instanceof Error ? err.message : String(err)}` };
         }
       },
     },
